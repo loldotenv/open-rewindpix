@@ -110,17 +110,17 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; 
 .ftile[aria-pressed="true"] canvas { outline: 2.5px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- 滑桿：名稱與數值在上、細軌道從 0 往兩側填色（參考 Photomator） ---------- */
-.slider { display: grid; grid-template-columns: 72px 1fr 38px; align-items: center; column-gap: 10px; }
-.slider label { font-size: 13px; white-space: nowrap; }
-.slider input { grid-column: 2; grid-row: 1; }
-.slider output { grid-column: 3; grid-row: 1; font: 600 12px var(--mono); color: var(--muted); text-align: right; }
+.slider { display: grid; grid-template-columns: 1fr auto; align-items: center; padding-top: 3px; line-height: 18px; }   /* 名稱與數值一行，軌道拉滿整個寬度 */
+.slider label { grid-column: 1; grid-row: 1; font-size: 13px; white-space: nowrap; }
+.slider input { grid-column: 1 / -1; grid-row: 2; }
+.slider output { grid-column: 2; grid-row: 1; font: 600 12px var(--mono); color: var(--muted); text-align: right; }
 .slider output.changed { color: var(--fg); }
-input[type="range"] { --lo: 50%; --hi: 50%; width: 100%; height: 28px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; }
+input[type="range"] { --lo: 50%; --hi: 50%; width: 100%; height: 22px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; }
 input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px;
   background: linear-gradient(90deg, var(--line) var(--lo), var(--fg) var(--lo), var(--fg) var(--hi), var(--line) var(--hi)); }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8.5px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--line) var(--lo), var(--fg) var(--lo), var(--fg) var(--hi), var(--line) var(--hi)); }
-input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 input[type="range"]:disabled { opacity: .4; }
 .adj-group + .adj-group { border-top: 1px solid var(--line); }
 .adj-head { display: flex; align-items: center; gap: 8px; min-height: 38px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
@@ -220,6 +220,13 @@ button.li.danger { color: var(--bad); font-weight: 600; justify-content: center;
 .seg.sm button { padding: 5px 9px; font-size: 13px; border-radius: 6px; }
 pre.log { font: 11px/1.45 var(--mono); background: var(--sunk); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; margin: 0; }
 details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+details.fold { display: block; padding: 0 14px; }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 8px; min-height: 46px; font-size: 13px; font-weight: 700; color: var(--muted); }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .15s; }
+details.fold:not([open]) > summary svg { transform: rotate(-90deg); }
+details.fold > summary em { font-style: normal; font-weight: 500; margin-left: auto; font-size: 12px; }
+details.fold #fe-cam { padding-bottom: 10px; }
 .switch { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .switch input { width: 20px; height: 20px; }
 </style>
@@ -310,8 +317,8 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
       <div id="fe-look"></div>
       <label class="switch"><input type="checkbox" id="fe-mono"> 黑白</label>
     </div>
-    <details class="card"><summary>相機內調色（拍攝時套用）</summary>
-      <div id="fe-cam" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+    <details class="card fold"><summary><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>相機內調色<em>拍攝時套用</em></summary>
+      <div id="fe-cam"></div>
     </details>
     <div class="btns">
       <button class="btn" id="fe-dup" type="button">複製</button>
@@ -367,7 +374,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <script>
 "use strict";
-const APP_VERSION = "2026.10.21h";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
+const APP_VERSION = "2026.10.21i";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
 const $ = (s, el = document) => el.querySelector(s);
 const store = {
   get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
