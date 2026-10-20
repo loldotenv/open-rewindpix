@@ -1,0 +1,32 @@
+Sample photo credits
+====================
+
+All three images are dedicated to the public domain under CC0 1.0. Attribution is
+not legally required; it is recorded here as a courtesy and for provenance.
+The bundled files are center-cropped to 4:3, resized to 1200x900, converted to sRGB,
+and stripped of metadata.
+
+portrait.jpg
+  Title:       Smiling woman with a phone
+  Author:      rawpixel.com (https://unsplash.com/@rawpixel)
+  Source:      https://commons.wikimedia.org/wiki/File:Smiling_woman_with_a_phone_(Unsplash).jpg
+  Original:    https://unsplash.com/photos/xYjWeyS235w (published on Unsplash 2017-05-12)
+  License:     CC0 1.0 Universal Public Domain Dedication (released on Unsplash
+               before its 2017-06-05 license change)
+  License URL: https://creativecommons.org/publicdomain/zero/1.0/
+
+landscape.jpg
+  Title:       Rosenborg Castle in Copenhagen2
+  Author:      Marco Almbauer (https://commons.wikimedia.org/wiki/User:A,Ocram)
+  Source:      https://commons.wikimedia.org/wiki/File:Rosenborg_Castle_in_Copenhagen2.jpg
+  License:     CC0 1.0 Universal Public Domain Dedication (own work, Commons Quality Image)
+  License URL: https://creativecommons.org/publicdomain/zero/1.0/
+
+street.jpg
+  Title:       Montmartre streets at dusk
+  Author:      John Towner (https://unsplash.com/@heytowner)
+  Source:      https://commons.wikimedia.org/wiki/File:Montmartre_streets_at_dusk_(Unsplash).jpg
+  Original:    https://unsplash.com/photos/UO02gAW3c0c (taken 2016-08-19)
+  License:     CC0 1.0 Universal Public Domain Dedication (released on Unsplash
+               before its 2017-06-05 license change)
+  License URL: https://creativecommons.org/publicdomain/zero/1.0/

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PS135 存到照片</title>
+<style>
+/* PS135 App 的「存到照片」轉手頁。相機只有 http，iOS 只讓 https 頁面用分享選單一次存多張照片，
+   所以 App 把沖好的照片用 postMessage 交給這一頁，由這一頁叫出分享選單。照片只在手機內傳遞。 */
+:root { --bg: #eef0f0; --panel: #fff; --fg: #161a1c; --muted: #5d686b; --line: #d3d9da; --accent: #c0612a; --ok: #2d7a4c; --bad: #b3261e; }
+@media (prefers-color-scheme: dark) { :root { --bg: #101314; --panel: #1a1e20; --fg: #e6ebec; --muted: #98a4a7; --line: #2d3437; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "PingFang TC", system-ui, sans-serif; }
+main { max-width: 560px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+h1 { font-size: 22px; margin: 0; }
+p { margin: 0; }
+#msg { color: var(--muted); font-size: 15px; }
+#msg.ok { color: var(--ok); font-weight: 600; } #msg.bad { color: var(--bad); font-weight: 600; }
+#grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+#grid img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: var(--line); display: block; }
+button { border: 0; border-radius: 12px; padding: 15px; font-family: inherit; font-size: 17px; font-weight: 700; background: var(--accent); color: #fff; }
+button:disabled { opacity: .4; }
+details { font-size: 12px; color: var(--muted); }
+pre { white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>存到照片</h1>
+  <p id="msg">等待 PS135 App 傳來照片…</p>
+  <div id="grid"></div>
+  <button id="save" type="button" disabled>存到照片</button>
+  <details><summary>診斷</summary><pre id="diag"></pre></details>
+</main>
+<script>
+"use strict";
+const APP_ORIGIN = "http://192.168.1.254";   // 只收相機上那個 App 傳來的照片
+const $ = s => document.querySelector(s);
+const log = [];
+function diag(line) { log.push(new Date().toLocaleTimeString() + "  " + line); $("#diag").textContent = log.join("\n"); }
+function say(text, cls) { $("#msg").textContent = text; $("#msg").className = cls || ""; }
+let files = [];
+
+diag("secure context: " + window.isSecureContext);
+diag("share: " + typeof navigator.share + "，canShare: " + typeof navigator.canShare);
+diag("opener: " + (window.opener ? "有" : "沒有"));
+diag("standalone: " + (navigator.standalone === true));
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(r => diag("service worker 已註冊（" + (navigator.serviceWorker.controller ? "這次由快取載入" : "下次可離線開啟") + "）"), e => diag("service worker 失敗：" + e.message));
+} else diag("沒有 service worker");
+
+window.addEventListener("message", ev => {
+  if (ev.origin !== APP_ORIGIN || !ev.data || ev.data.type !== "ps135-photos") return;
+  files = (ev.data.files || []).filter(f => f && f.blob instanceof Blob).map(f => new File([f.blob], String(f.name || "photo.jpg").replace(/[\\/]/g, "_"), { type: f.blob.type || "image/jpeg" }));
+  const total = files.reduce((n, f) => n + f.size, 0);
+  diag("收到 " + files.length + " 張，共 " + (total / 1048576).toFixed(1) + " MB");
+  const grid = $("#grid"); grid.innerHTML = "";
+  files.forEach(f => { const im = document.createElement("img"); im.alt = f.name; im.src = URL.createObjectURL(f); grid.appendChild(im); });
+  const ok = navigator.canShare ? navigator.canShare({ files }) : !!navigator.share;
+  diag("canShare(files): " + ok);
+  if (!files.length) return say("沒有收到照片", "bad");
+  if (!ok) return say("這個瀏覽器不能用分享選單存照片", "bad");
+  say("收到 " + files.length + " 張照片。按下面的按鈕，再選「儲存影像」。");
+  $("#save").disabled = false;
+});
+if (window.opener) { window.opener.postMessage({ type: "ps135-saver-ready" }, APP_ORIGIN); diag("已通知 App"); }
+else say("請從 PS135 App 打開這一頁。");
+
+$("#save").onclick = async () => {
+  try {
+    await navigator.share({ files });
+    say("完成", "ok"); diag("share 完成");
+    if (window.opener) window.opener.postMessage({ type: "ps135-saved", n: files.length }, APP_ORIGIN);
+  } catch (e) {
+    diag("share 失敗：" + e.name + " " + e.message);
+    if (e.name !== "AbortError") say("無法叫出分享選單：" + e.message, "bad");
+  }
+};
+</script>
+</body>
+</html>

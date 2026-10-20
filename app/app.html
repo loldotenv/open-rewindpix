@@ -1,0 +1,1461 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PS135">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1e20" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="/APP/manifest.json">
+<link rel="apple-touch-icon" href="/APP/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/APP/icon-192.png">
+<title>PS135 相機</title>
+<style>
+/* 放在相機記憶卡根目錄，用 http://192.168.1.254/app.html 開。手機連相機 Wi-Fi 時沒有網路，所以不載入任何外部資源。 */
+:root {
+  --bg: #eef0f0; --panel: #ffffff; --sunk: #e3e7e7; --fg: #161a1c; --muted: #5d686b; --line: #d3d9da;
+  --accent: #c0612a; --accent-ink: #ffffff; --ok: #2d7a4c; --warn: #9a6f00; --bad: #b3261e;
+  --sans: -apple-system, "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  --mono: ui-monospace, Menlo, monospace;
+  --tab-h: 58px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #101314; --panel: #1a1e20; --sunk: #242a2c; --fg: #e6ebec; --muted: #98a4a7; --line: #2d3437;
+    --accent: #e3894e; --accent-ink: #1b0f07; --ok: #5fc187; --warn: #e2b53b; --bad: #ff7b70; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #101314; --panel: #1a1e20; --sunk: #242a2c; --fg: #e6ebec; --muted: #98a4a7; --line: #2d3437;
+  --accent: #e3894e; --accent-ink: #1b0f07; --ok: #5fc187; --warn: #e2b53b; --bad: #ff7b70; color-scheme: dark; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--sans); -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* ---------- 連線狀態：footer 最右邊；斷線時上方出現提示 ---------- */
+.banner { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  background: var(--bad); color: #fff; font-size: 13px; font-weight: 600; }
+.banner span { flex: 1; }
+.banner button { border: 0; background: rgba(255,255,255,.22); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
+nav.tabs .st { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: var(--tab-h); color: var(--fg); }
+nav.tabs .st b { font: 700 17px var(--mono); letter-spacing: .02em; }
+nav.tabs .st small { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); font-weight: 600; }
+nav.tabs .st .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+nav.tabs .st[data-state="ok"] .dot { background: var(--ok); }
+nav.tabs .st[data-state="slow"] .dot { background: var(--warn); }
+nav.tabs .st[data-state="down"] .dot { background: var(--bad); }
+nav.tabs .st[data-busy] .dot { animation: blink .8s infinite alternate; }
+nav.tabs .st.full b { color: var(--bad); }
+@keyframes blink { to { opacity: .25; } }
+
+/* ---------- 版面 ---------- */
+main { max-width: 620px; margin: 0 auto; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom, 0px)); }
+section.page { display: none; flex-direction: column; gap: 12px; }
+section.page.on { display: flex; }
+h1 { font-size: 22px; margin: 2px 0 0; }
+h2 { font-size: 16px; margin: 0; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.seg { display: flex; gap: 4px; background: var(--sunk); padding: 4px; border-radius: 10px; overflow-x: auto; }
+.seg button { flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); padding: 8px 12px; border-radius: 7px; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.btn { border: 1px solid var(--line); background: var(--panel); padding: 11px 14px; border-radius: 11px; font-weight: 600; font-size: 15px; text-align: center; text-decoration: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
+.btn:disabled { opacity: .45; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btns .wide { grid-column: 1 / -1; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+input[type="text"], select { width: 100%; border: 1px solid var(--line); background: var(--sunk); border-radius: 9px; padding: 9px 11px; font-size: 16px; }
+input:disabled { opacity: .6; }
+.msg { font-size: 14px; margin: 0; }
+.msg:empty { display: none; }
+.msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); } .msg.warn { color: var(--warn); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* ---------- 底片格子 ---------- */
+.slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.slotc { position: relative; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 0; overflow: hidden; display: flex; flex-direction: column; text-align: left; min-width: 0; color: var(--fg); }
+.slotc canvas { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--sunk); }
+.slotc .no { position: absolute; left: 6px; top: 6px; background: rgba(0,0,0,.6); color: #fff; font: 700 11px var(--mono); padding: 2px 6px; border-radius: 6px; }
+.slotc b { font: 700 13px var(--mono); padding: 7px 8px 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slotc small { font-size: 11px; color: var(--muted); padding: 0 8px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slotc small.warn { color: var(--warn); font-weight: 600; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 12px 8px; }
+.ftile { position: relative; border: 0; background: none; padding: 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--fg); text-align: left; }
+.ftile canvas, .ftile .plus { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border-radius: 9px; background: var(--sunk); box-sizing: border-box; }
+.ftile .plus { display: grid; place-items: center; font-size: 28px; font-weight: 300; color: var(--muted); border: 1.5px dashed var(--line); background: none; }
+.orow { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; }
+.orow + .orow { border-top: 1px solid var(--line); padding-top: 10px; }
+.orow img { width: 48px; height: 36px; object-fit: cover; border-radius: 6px; background: var(--sunk); display: block; }
+.orow b { display: block; font: 700 13px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.orow span { font-size: 12px; color: var(--muted); }
+.orow .done { color: var(--ok); font-size: 13px; font-weight: 600; }
+.ftile b { font: 700 11px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftile em { position: absolute; right: 5px; top: 5px; font: 700 10px var(--mono); font-style: normal; background: var(--accent); color: var(--accent-ink); padding: 1px 5px; border-radius: 5px; }
+.ftile[aria-pressed="true"] canvas { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- 滑桿：名稱與數值在上、細軌道從 0 往兩側填色（參考 Photomator） ---------- */
+.slider { display: grid; grid-template-columns: 72px 1fr 38px; align-items: center; column-gap: 10px; }
+.slider label { font-size: 13px; white-space: nowrap; }
+.slider input { grid-column: 2; grid-row: 1; }
+.slider output { grid-column: 3; grid-row: 1; font: 600 12px var(--mono); color: var(--muted); text-align: right; }
+.slider output.changed { color: var(--fg); }
+input[type="range"] { --lo: 50%; --hi: 50%; width: 100%; height: 28px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; }
+input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--line) var(--lo), var(--fg) var(--lo), var(--fg) var(--hi), var(--line) var(--hi)); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8.5px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--line) var(--lo), var(--fg) var(--lo), var(--fg) var(--hi), var(--line) var(--hi)); }
+input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+input[type="range"]:disabled { opacity: .4; }
+.adj-group + .adj-group { border-top: 1px solid var(--line); }
+.adj-head { display: flex; align-items: center; gap: 8px; min-height: 38px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.adj-head .t { flex: 1; }
+.adj-head .t em { font-style: normal; color: var(--accent); margin-left: 6px; }
+.adj-head button { border: 0; background: none; color: var(--accent); font-size: 13px; font-weight: 600; padding: 4px 0; }
+.adj-head svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .15s; }
+.adj-group.closed .adj-head svg { transform: rotate(-90deg); }
+.adj-group.closed .slider { display: none; }
+.adj-group:not(.closed) { padding-bottom: 6px; }
+
+/* ---------- 編輯畫面：深色、照片在上、濾鏡縮圖列、調整分頁（參考 Photomator） ---------- */
+.sheet.editor { --bg: #0b0c0d; --panel: #17191a; --sunk: #232628; --fg: #f2f4f5; --muted: #8e979b; --line: #3a3f42;
+  --accent: #f0a35e; --accent-ink: #1b0f07; --ok: #5fc187; --warn: #e2b53b; --bad: #ff7b70; color-scheme: dark; color: var(--fg); }
+#fe { z-index: 45; }   /* 從照片「存成新底片」時，編輯器要蓋在照片上面 */
+.stage { position: relative; margin: 0 -16px; background: #000; display: flex; justify-content: center; align-items: center; min-height: 200px;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.stage:first-child { margin-top: -14px; }
+.stage canvas { display: block; max-width: 100%; max-height: 45vh; width: auto; height: auto; }
+.cmpbtn { position: absolute; right: 10px; bottom: 10px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.cmpbtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.cmpbtn svg .fill { fill: currentColor; stroke: none; }
+.stage small { position: absolute; left: 10px; top: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 6px; }
+.modebar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--sunk); padding: 4px; border-radius: 10px; }
+.modebar button { border: 0; background: transparent; color: var(--muted); padding: 7px; border-radius: 7px; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.modebar button[aria-pressed="true"] { background: var(--panel); color: var(--fg); }
+.modebar svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.presets { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+.presets::-webkit-scrollbar { display: none; }
+.preset { flex: none; width: 56px; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--muted); font: 600 11px var(--sans); }
+.preset canvas { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 2px solid transparent; background: var(--sunk); }
+.preset span { max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset[aria-pressed="true"] { color: var(--fg); }
+.preset[aria-pressed="true"] canvas { border-color: var(--accent); }
+.menu { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.menu button { border: 0; background: none; padding: 12px 14px; text-align: left; font-size: 15px; }
+.menu button + button { border-top: 1px solid var(--line); }
+.menu .danger { color: var(--bad); }
+
+/* ---------- 相簿 ---------- */
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.tile { position: relative; aspect-ratio: 1; background: var(--sunk); border: 0; padding: 0; border-radius: 6px; overflow: hidden; }
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile span { position: absolute; left: 4px; bottom: 3px; right: 4px; font: 700 10px var(--mono); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.9); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .check { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.25); display: none; }
+body.selecting .tile .check { display: block; }
+.tile[aria-pressed="true"] .check { background: var(--accent); }
+.tile[aria-pressed="true"] img { opacity: .7; }
+.selbar { position: fixed; left: 0; right: 0; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); z-index: 25; background: var(--panel); border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+body.selecting main { padding-bottom: calc(var(--tab-h) + 130px + env(safe-area-inset-bottom, 0px)); }
+.empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 14px; }
+
+/* ---------- 全螢幕面板 ---------- */
+.sheet { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: none; flex-direction: column; }
+.sheet.on { display: flex; }
+.sheet header { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.sheet header b { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet .body { flex: 1; overflow: auto; padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; max-width: 620px; width: 100%; margin: 0 auto; }
+.sheet .body > * { flex-shrink: 0; }   /* 內容超過畫面時用捲動，不要把照片和選單壓扁 */
+.sheet canvas.big, .sheet img.big { width: 100%; height: auto; border-radius: 10px; background: var(--sunk); display: block; }
+.compare { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.compare small { position: absolute; left: 8px; top: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px; }
+
+/* ---------- 分頁列 ---------- */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--panel); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: var(--tab-h); color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 600; }
+nav.tabs a svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs a[aria-current="page"] { color: var(--accent); }
+
+dl.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 14px; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; text-align: right; font-weight: 600; word-break: break-all; min-height: 1.4em; }
+dl.kv dd:empty::after { content: ""; display: inline-block; width: 64px; height: 1em; vertical-align: middle; border-radius: 4px; background: var(--sunk); }
+pre.log { font: 11px/1.45 var(--mono); background: var(--sunk); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; margin: 0; }
+details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.switch { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.switch input { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+
+<div class="banner" id="banner" role="alert" hidden><span id="bn-text"></span><button id="st-retry" type="button">重試</button></div>
+
+<main>
+  <!-- ==================== 底片 ==================== -->
+  <section class="page" id="page-film">
+    <h1>底片</h1>
+    <div class="slots" id="slots"></div>
+    <p class="hint">連著 Wi-Fi 時，在相機上切換 C1～C3 不會生效。</p>
+    <p class="msg" id="film-msg"></p>
+    <div class="card">
+      <h2>我的底片</h2>
+      <div class="fgrid" id="lib-mine"></div>
+    </div>
+    <div class="card">
+      <h2>內建底片</h2>
+      <div class="fgrid" id="lib-builtin"></div>
+    </div>
+  </section>
+
+  <!-- ==================== 相簿 ==================== -->
+  <section class="page" id="page-gallery">
+    <div class="row"><h1 class="grow">相簿</h1><button class="btn small" id="gal-select" type="button">選取</button><button class="btn small" id="gal-refresh" type="button">重新整理</button><button class="btn small primary" id="gal-out" type="button">全部拿出</button></div>
+    <p class="hint" id="gal-info"></p>
+    <p class="msg" id="gal-msg"></p>
+    <div class="grid" id="gal-grid"></div>
+    <div class="card" id="gal-tidy" hidden></div>
+  </section>
+
+  <!-- ==================== 設定 ==================== -->
+  <section class="page" id="page-settings">
+    <h1>設定</h1>
+    <div class="card">
+      <div class="row"><h2 class="grow">相機資訊</h2><button class="btn small" id="set-refresh" type="button">重新讀取</button></div>
+      <dl class="kv" id="set-info"></dl>
+    </div>
+    <div class="card">
+      <h2>自動關機</h2>
+      <div class="seg" id="set-apo" role="group" aria-label="自動關機"></div>
+    </div>
+    <div class="card">
+      <h2>每卷張數</h2>
+      <div class="seg" id="set-limit" role="group" aria-label="每卷張數"></div>
+    </div>
+    <div class="card">
+      <h2>外觀</h2>
+      <div class="seg" id="set-theme" role="group" aria-label="外觀"></div>
+    </div>
+    <div class="card">
+      <button class="btn danger" id="set-reset" type="button">恢復相機原廠設定</button>
+    </div>
+    <div class="card" id="set-dev" hidden>
+      <h2>開發者</h2>
+      <details><summary>通訊紀錄</summary><pre class="log" id="set-log" style="margin-top:8px"></pre></details>
+      <button class="btn" id="dev-saver" type="button">存到照片測試（沖洗最新一張）</button>
+      <p class="msg" id="dev-saver-msg"></p>
+    </div>
+    <p class="msg" id="set-msg"></p>
+  </section>
+</main>
+
+<div class="selbar" id="gal-selbar" hidden>
+  <div class="row"><b class="grow" id="gal-selcount" style="font-size:14px"></b><button class="btn small danger" id="gal-del" type="button">刪除</button></div>
+  <div class="chips" id="gal-dates"></div>
+</div>
+
+<nav class="tabs" aria-label="分頁">
+  <a href="#film" data-tab="film"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>底片</a>
+  <a href="#gallery" data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>相簿</a>
+  <a href="#settings" data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>設定</a>
+  <button class="st" id="status" type="button" data-state="wait" aria-live="polite"><b id="st-roll">—</b><small><i class="dot" aria-hidden="true"></i><span id="st-title">連線中</span></small></button>
+</nav>
+
+<!-- 選底片 -->
+<div class="sheet" id="picker" role="dialog" aria-modal="true" aria-label="選底片">
+  <header><button class="btn small" id="pk-close" type="button">取消</button><b id="pk-title">選底片</b></header>
+  <div class="body"><div class="card" id="pk-fix" hidden></div><div class="card"><div class="fgrid" id="pk-list"></div></div></div>
+</div>
+
+<!-- 編輯底片 -->
+<div class="sheet editor" id="fe" role="dialog" aria-modal="true" aria-label="底片">
+  <header><button class="btn small" id="fe-close" type="button">關閉</button><b id="fe-title">底片</b><button class="btn small primary" id="fe-save" type="button">儲存</button></header>
+  <div class="body">
+    <p class="msg warn" id="fe-ro" hidden>內建底片無法編輯，可以複製一份再修改。</p>
+    <div class="stage" id="fe-cmp"><canvas id="fe-canvas"></canvas><small id="fe-tag" hidden>原圖</small><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
+    <div class="chips" id="fe-samples" role="group" aria-label="預覽照片"></div>
+    <div class="card">
+      <label class="field">名稱<input type="text" id="fe-name" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="英文或數字，最多 10 字"></label>
+      <label class="field">描述<input type="text" id="fe-label" maxlength="24" autocomplete="off"></label>
+    </div>
+    <div class="card">
+      <div id="fe-look"></div>
+      <label class="switch"><input type="checkbox" id="fe-mono"> 黑白</label>
+    </div>
+    <details class="card"><summary>相機內調色</summary>
+      <p class="hint" style="margin-top:8px">拍攝時直接套用在照片上。</p>
+      <div id="fe-cam" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+    </details>
+    <div class="btns">
+      <button class="btn" id="fe-dup" type="button">複製</button>
+      <button class="btn danger" id="fe-del" type="button">刪除</button>
+    </div>
+    <p class="msg" id="fe-msg"></p>
+  </div>
+</div>
+
+<!-- 照片（沖洗） -->
+<div class="sheet editor" id="viewer" role="dialog" aria-modal="true" aria-label="照片">
+  <header><button class="btn small" id="v-close" type="button">關閉</button><b id="v-title"></b><button class="btn small" id="v-more" type="button" aria-label="更多" aria-expanded="false">⋯</button><button class="btn small primary" id="v-develop" type="button">儲存</button></header>
+  <div class="body">
+    <div class="stage" id="v-cmp"><canvas id="v-canvas"></canvas><small id="v-tag" hidden>原圖</small><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
+    <div class="menu" id="v-menu" hidden>
+      <button id="v-download" type="button">下載原檔</button>
+      <button id="v-reset" type="button">還原所有調整</button>
+      <button class="danger" id="v-delete" type="button">刪除照片</button>
+    </div>
+    <p class="msg" id="v-msg"></p>
+    <div class="modebar" id="v-modes" role="group" aria-label="編輯">
+      <button type="button" data-mode="film"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/></svg>濾鏡</button>
+      <button type="button" data-mode="adjust"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>調整</button>
+    </div>
+    <div id="v-film-panel"><div class="presets" id="v-films"></div><div id="v-strength"></div></div>
+    <div id="v-adjust-panel" hidden></div>
+    <div class="row" id="v-savefilm" hidden><button class="btn small" id="v-asnew" type="button">存成新底片</button><button class="btn small" id="v-overwrite" type="button"></button></div>
+    <p class="hint" id="v-meta"></p>
+  </div>
+</div>
+
+<!-- 沖洗結果 -->
+<div class="sheet" id="out" role="dialog" aria-modal="true" aria-label="拿出照片">
+  <header><button class="btn small" id="out-close" type="button">關閉</button><b id="out-title">拿出照片</b></header>
+  <div class="body">
+    <p class="hint" id="out-info"></p>
+    <div class="card" id="out-list"></div>
+    <div class="card">
+      <p class="hint">照片都存好後，再從相機清除。隱藏的 ._FILM 備份也會一起清掉。</p>
+      <button class="btn danger" id="out-clear" type="button">從相機清除</button>
+      <p class="msg" id="out-msg"></p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="result" role="dialog" aria-modal="true" aria-label="完成">
+  <header><button class="btn small" id="r-close" type="button">完成</button><b>照片已完成</b></header>
+  <div class="body">
+    <img class="big" id="r-img" alt="完成的照片">
+    <p class="hint">長按照片，選「加入照片」即可存到相簿。</p>
+    <a class="btn primary" id="r-dl" download>存到檔案</a>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("ps135app-" + k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function say(el, text, cls) { el.textContent = text; el.className = "msg " + (cls || ""); }
+function armed(btn, label, ms) {   // 危險動作要按兩次：第一次只改字，回傳 false
+  if (btn.dataset.armed) { clearTimeout(+btn.dataset.armed); delete btn.dataset.armed; btn.textContent = btn.dataset.orig; return true; }
+  btn.dataset.orig = btn.textContent; btn.textContent = label;
+  btn.dataset.armed = setTimeout(() => { delete btn.dataset.armed; btn.textContent = btn.dataset.orig; }, ms || 4000);
+  return false;
+}
+
+/* =====================================================================
+   相機連線：所有請求排成一條隊伍，一次只送一個（相機的網頁伺服器很慢，
+   同時送多個請求會互相卡住）。指令優先，縮圖與原圖下載排在後面。
+   ===================================================================== */
+const conn = { lastOk: 0, fails: 0, latency: null, lastErr: "", running: false };
+const queue = { hi: [], lo: [] };
+const trace = [];
+function addTrace(line) {
+  trace.push(new Date().toLocaleTimeString() + "  " + line);
+  if (trace.length > 40) trace.shift();
+  const el = $("#set-log"); if (el) el.textContent = trace.slice().reverse().join("\n");
+}
+function schedule(fn, pri) {
+  return new Promise((resolve, reject) => { queue[pri || "hi"].push({ fn, resolve, reject }); renderStatus(); pump(); });
+}
+async function pump() {
+  if (conn.running) return;
+  const job = queue.hi.shift() || queue.lo.shift();
+  if (!job) return;
+  conn.running = true; renderStatus();
+  try { job.resolve(await job.fn()); } catch (e) { job.reject(e); }
+  conn.running = false; renderStatus(); pump();
+}
+async function fetchT(url, ms) {
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, { cache: "no-store", signal: ac.signal }); }
+  catch (e) { throw new Error(e.name === "AbortError" ? "逾時" : "連不到相機"); }
+  finally { clearTimeout(t); }
+}
+function markOk(ms) { conn.lastOk = Date.now(); conn.fails = 0; conn.latency = Math.round(ms); conn.lastErr = ""; renderStatus(); }
+function markFail(e) { conn.fails++; conn.lastErr = e.message; renderStatus(); }
+function cmd(n, extra, opt) {
+  opt = opt || {};
+  const url = "/?custom=1&cmd=" + n + (extra || "");
+  return schedule(async () => {
+    const t0 = performance.now();
+    try {
+      const r = await fetchT(url, opt.timeout || 8000);
+      const text = await r.text();
+      markOk(performance.now() - t0);
+      if (n !== 3016) addTrace(n + (extra || "") + " → " + (n === 3015 ? "檔案清單 " + (text.match(/<File>/g) || []).length + " 筆" : text.replace(/\s+/g, " ").slice(0, 200)));
+      return text;
+    } catch (e) { markFail(e); addTrace(n + (extra || "") + " → ✗ " + e.message); throw e; }
+  }, opt.pri);
+}
+function getBlob(url, opt) {
+  opt = opt || {};
+  return schedule(async () => {
+    const t0 = performance.now();
+    try {
+      const r = await fetchT(url, opt.timeout || 30000);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const b = await r.blob();
+      markOk(performance.now() - t0);
+      return b;
+    } catch (e) { if (!/HTTP/.test(e.message)) markFail(e); throw e; }
+  }, opt.pri || "lo");
+}
+
+/* ---------- XML ---------- */
+function parseXml(xml) {
+  try {
+    const doc = new DOMParser().parseFromString("<r>" + xml.replace(/<\?xml[^>]*\?>/i, "") + "</r>", "application/xml");
+    return doc.getElementsByTagName("parsererror").length ? null : doc;
+  } catch (e) { return null; }
+}
+function field(xml, name) {
+  const doc = parseXml(xml);
+  if (doc) {
+    const want = name.toLowerCase();
+    for (const el of doc.getElementsByTagName("*")) if (el.tagName.toLowerCase() === want) return el.textContent.trim();
+    return null;
+  }
+  const m = new RegExp("<" + name + "(?:\\s[^>]*)?>\\s*([^<]*?)\\s*</" + name + ">", "i").exec(xml);
+  return m ? m[1] : null;
+}
+function statusOk(xml) { const s = field(xml, "Status"); return s === null || s === "0"; }
+// 取回應裡的「值」：Value／String，否則第一個不是 Cmd／Status 的欄位，再不然是純文字。不拿 Status 充數
+function valueOf(xml) {
+  const v = field(xml, "Value") ?? field(xml, "String");
+  if (v != null) return v;
+  const doc = parseXml(xml);
+  if (doc) {
+    for (const el of doc.getElementsByTagName("*")) if (!el.children.length && !/^(r|cmd|status)$/i.test(el.tagName) && el.textContent.trim()) return el.textContent.trim();
+    const root = doc.documentElement;
+    return !root.children.length && root.textContent.trim() ? root.textContent.trim() : null;
+  }
+  return xml.replace(/<[^>]*>/g, " ").trim() || null;
+}
+function statusMap(xml) {   // 3014：<Cmd>n</Cmd><Status>v</Status> 成對
+  const map = {}, re = /<Cmd>\s*(\d+)\s*<\/Cmd>\s*<Status>\s*(-?\d+)\s*<\/Status>/g; let m;
+  while ((m = re.exec(xml))) map[m[1]] = +m[2];
+  return map;
+}
+
+/* ---------- 狀態列 ---------- */
+const roll = { shot: null };   // 這卷已拍張數 = 隱藏 ._FILM 裡的檔案數（韌體 0x416554 就是這樣算的），上限是 8004
+function renderStatus() {
+  const el = $("#status"), now = Date.now();
+  let state, title, warn = "";
+  if (!conn.lastOk && !conn.fails) { state = "wait"; title = "連線中"; }
+  else if (conn.fails >= 2 || (conn.lastOk && now - conn.lastOk > 30000 && !conn.running)) {
+    state = "down"; title = "未連線";
+    warn = conn.lastErr === "逾時" ? "相機可能已待機，按一下相機按鍵喚醒" : "連不到相機，請確認手機已連上相機的 Wi-Fi";
+  } else if (conn.fails === 1) { state = "slow"; title = "不穩"; }
+  else { state = "ok"; title = "已連線"; }
+  el.dataset.state = state; $("#st-title").textContent = title;
+  const limit = store.get("limit", null), full = roll.shot != null && limit && roll.shot >= limit;
+  $("#st-roll").textContent = roll.shot == null ? "—" : full ? "已滿" : roll.shot + (limit ? "/" + limit : "");
+  el.classList.toggle("full", !!full);
+  el.setAttribute("aria-label", title + (roll.shot != null ? "，這卷已拍 " + roll.shot + (limit ? " 張，共 " + limit + " 張" : " 張") : ""));
+  if (queue.hi.length + queue.lo.length + (conn.running ? 1 : 0)) el.dataset.busy = ""; else delete el.dataset.busy;
+  $("#banner").hidden = state !== "down"; $("#bn-text").textContent = warn;
+}
+async function refreshRoll() {   // 讀張數上限與 ._FILM 檔案數
+  try {
+    const m = statusMap(await cmd(3014, "", { timeout: 15000, pri: "lo" }));
+    if (m["8004"] != null) store.set("limit", m["8004"]);
+    roll.shot = (await listPhotos()).filter(f => f.path.includes(FILMQ)).length;
+  } catch (e) {}
+  renderStatus();
+}
+setInterval(renderStatus, 1000);
+function heartbeat() { if (!conn.running && !queue.hi.length && !queue.lo.length) cmd(3016, "", { timeout: 5000 }).catch(() => {}); }
+setInterval(heartbeat, 10000);
+$("#st-retry").onclick = () => { conn.fails = 0; renderStatus(); cmd(3016, "", { timeout: 5000 }).catch(() => {}); };
+$("#status").onclick = () => { conn.fails = 0; refreshRoll(); };
+
+/* =====================================================================
+   機內調色：介面 -100～+100（0 = 中性），依實測範圍換算成相機值。
+   實測依據：2026-10-19 在 V1.2.1D 上的三輪極值實驗。
+   ===================================================================== */
+const PARAMS = [
+  { key: "LUM",      name: "亮度",   neutral: 0,  lo: -100, hi: 200, note: "改的是自動曝光目標，要等幾秒才生效" },
+  { key: "CONTRAST", name: "對比",   neutral: 75, lo: -50,  hi: 90,  note: "+100 會換成相機的高對比曲線" },
+  { key: "RGAIN",    name: "紅",     neutral: 0,  lo: -100, hi: 100, note: "紅色版的倍率" },
+  { key: "GGAIN",    name: "綠",     neutral: 0,  lo: -100, hi: 100, note: "綠色版的倍率" },
+  { key: "BGAIN",    name: "藍",     neutral: 0,  lo: -100, hi: 100, note: "藍色版的倍率" },
+  { key: "HUE",      name: "色相",   neutral: 0,  lo: -75,  hi: 75,  note: "±75 約 ±58°" },
+  { key: "SAT",      name: "飽和",   neutral: 0,  lo: -100, hi: 50,  note: "-100 是黑白；相機 +50 以上都一樣" }
+];
+const toCam = (p, u) => Math.round(u >= 0 ? p.neutral + (u / 100) * (p.hi - p.neutral) : p.neutral + (u / 100) * (p.neutral - p.lo));
+const toUser = (p, c) => Math.max(-100, Math.min(100, Math.round(c >= p.neutral ? (c - p.neutral) / (p.hi - p.neutral) * 100 : (c - p.neutral) / (p.neutral - p.lo) * 100)));
+const NEUTRAL7 = [0, 0, 0, 0, 0, 0, 0];
+const SLOTS = [{ no: "C1", w: 8012, r: 8013 }, { no: "C2", w: 8014, r: 8015 }, { no: "C3", w: 8016, r: 8017 }];
+
+/* =====================================================================
+   底片庫：名稱（寫進相機、出現在檔名）＋ 手機端沖洗風格 ＋ 機內調色（預設中性）。
+   內建底片的風格是依名稱做的近似，不是原生 App 的真實濾鏡。
+   ===================================================================== */
+const BUILTIN_FILMS = [
+  { name: "STD",   label: "原色", look: {} },
+  { name: "BWHC",  label: "黑白高反差", look: { mono: 1, con: 70, grain: 30, vig: 25 } },
+  { name: "GL200", label: "暖金 200", look: { temp: 55, tint: 15, con: 15, sat: 20, fade: 10, grain: 20, hi: [14, 6, -10] } },
+  { name: "PT400", label: "柔和人像 400", look: { temp: 20, con: -15, sat: -5, fade: 20, grain: 20, sh: [4, 0, 8], hi: [10, 4, -4] } },
+  { name: "GLEXP", label: "過期暖金", look: { temp: 70, sat: -25, fade: 45, grain: 40, vig: 30, sh: [12, 0, 16] } },
+  { name: "CT100", label: "冷調正片", look: { temp: -35, con: 35, sat: 30, grain: 10 } },
+  { name: "MONO",  label: "柔和黑白", look: { mono: 1, con: -15, fade: 25, grain: 35 } },
+  // 以柯達底片為參考的近似風格
+  { name: "PORTRA400", label: "柯達 Portra 400 風格", look: { temp: 18, tint: 4, con: -12, sat: -10, fade: 12, grain: 22, sh: [0, 4, 6], hi: [10, 5, -2] } },
+  { name: "PORTRA160", label: "柯達 Portra 160 風格", look: { temp: 12, con: -15, sat: -12, fade: 10, grain: 10, sh: [0, 3, 5], hi: [8, 4, 0] } },
+  { name: "GOLD200",   label: "柯達 Gold 200 風格", look: { temp: 40, tint: 8, con: 12, sat: 18, fade: 8, grain: 22, hi: [12, 6, -10] } },
+  { name: "ULTRAMAX",  label: "柯達 UltraMax 400 風格", look: { temp: 30, tint: 5, con: 22, sat: 25, fade: 5, grain: 32, sh: [2, 0, 4] } },
+  { name: "EKTAR100",  label: "柯達 Ektar 100 風格", look: { temp: 5, con: 30, sat: 40, grain: 6 } },
+  { name: "COLORPLUS", label: "柯達 ColorPlus 200 風格", look: { temp: 35, tint: 10, con: 5, sat: 5, fade: 22, grain: 30, sh: [6, 2, 0] } },
+  { name: "E100",      label: "柯達 Ektachrome E100 風格", look: { temp: -20, con: 30, sat: 28, grain: 8, sh: [0, 2, 8] } },
+  { name: "TRIX400",   label: "柯達 Tri-X 400 風格", look: { mono: 1, con: 50, grain: 45, vig: 10 } },
+  { name: "TMAX100",   label: "柯達 T-Max 100 風格", look: { mono: 1, con: 15, grain: 10 } }
+].map(f => Object.assign({ builtin: true, cam: NEUTRAL7.slice() }, f));
+/* 自訂底片：主要存在記憶卡 /APP/films.json，手機只當快取（"lib"），換手機也看得到。
+   每次儲存或刪除都新增一個版本 { name, t, label, look, cam } 或 { name, t, del: 1 }，依 t 排序；
+   t 與相機 3015 的 TIME 同格式（"YYYY/MM/DD HH:MM:SS"），沖洗時依拍攝時間挑當時的版本，改了底片舊照片不會變。 */
+const stamp = (d = new Date()) => d.getFullYear() + "/" + [d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, "0")).join("/") + " " + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, "0")).join(":");
+/* 存在記憶卡 /APP/ 的資料，手機留一份快取。修改後等 1.5 秒再上傳（拖拉桿時不會一直傳）。
+   同步時先讀記憶卡上的檔案、與手機合併，內容不同才寫回去；同時只跑一次，跑完若又有修改就再跑。 */
+function cardDoc(file, key, empty, merge, onSynced) {
+  const dirty = key + "dirty", doc = { data: merge(store.get(key, null) || empty(), null), job: null, timer: null };
+  doc.changed = () => {
+    store.set(dirty, true);
+    clearTimeout(doc.timer); doc.timer = setTimeout(doc.sync, 1500);
+    return store.set(key, doc.data);
+  };
+  doc.sync = () => {
+    if (doc.job) { doc.job.again = true; return doc.job.p; }
+    const job = doc.job = { again: false };
+    job.p = (async () => {
+      try {
+        do {
+          job.again = false;
+          const r = await httpReq("/APP/" + file + "?t=" + Date.now(), {});
+          let card = null;
+          if (r.status === 200) { try { card = JSON.parse(r.text); } catch (e) { addTrace(file + " 內容損毀，以手機上的資料重寫"); } }
+          else if (r.status !== 404) throw new Error("HTTP " + r.status);
+          const had = card ? JSON.stringify(merge(empty(), card)) : "";
+          doc.data = merge(doc.data, card); store.set(key, doc.data);
+          const text = JSON.stringify(doc.data);
+          if (text !== had) await uploadApp(file, text);
+          if (!job.again) store.set(dirty, false);
+        } while (job.again);
+        addTrace(file + " 已同步");
+        onSynced(true);
+      } catch (e) { addTrace(file + " 同步失敗：" + e.message); onSynced(false); }
+      finally { doc.job = null; }
+    })();
+    return job.p;
+  };
+  setInterval(() => { if (store.get(dirty, false)) doc.sync(); }, 15000);
+  return doc;
+}
+async function uploadApp(name, text) {   // 實測：POST multipart（欄位 fileupload1）到 /APP/ 可上傳，同名會覆寫
+  const form = new FormData(); form.append("fileupload1", new Blob([text], { type: "application/json" }), name);
+  await httpReq("/APP/", { method: "POST", body: form });
+  const back = await httpReq("/APP/" + name + "?t=" + Date.now(), {});
+  if (back.status !== 200 || back.text !== text) throw new Error("寫入記憶卡失敗");
+}
+
+const libDoc = cardDoc("films.json", "lib", () => ({ v: 1, films: [] }), mergeLib, ok => {
+  refreshFilms(); renderLibrary(); renderSlots();
+  if (!ok && store.get("libdirty", false)) say($("#film-msg"), "底片已存在手機，連上相機後會自動存到記憶卡", "warn");
+});
+if (!store.get("lib", null) && store.get("films", null)) {   // 舊版只存在手機的底片
+  libDoc.data = mergeLib({ films: store.get("films", []).map(f => Object.assign({ t: "0000/00/00 00:00:00" }, f)) }); libDoc.changed();
+}
+const syncLib = () => libDoc.sync();
+let customFilms = [];
+function refreshFilms() {
+  const cur = new Map();
+  libDoc.data.films.forEach(v => cur.set(v.name, v));   // 已排序，最後一個就是最新版本
+  customFilms = [...cur.values()].filter(v => !v.del);
+}
+refreshFilms();
+const allFilms = () => BUILTIN_FILMS.concat(customFilms);
+const byName = (list, name) => name ? list.find(f => f.name.toUpperCase() === String(name).toUpperCase()) || null : null;
+const findFilm = name => byName(allFilms(), name);
+function filmAt(name, time) {   // 拍攝當時的版本；照片比所有版本都早（例如相機時鐘被重設過）就用最早的版本
+  const vs = libDoc.data.films.filter(v => v.name.toUpperCase() === String(name || "").toUpperCase());
+  if (!vs.length) return null;
+  const v = /^\d{4}\/\d\d\/\d\d \d\d:\d\d:\d\d$/.test(time || "") ? vs.filter(v => v.t <= time).pop() || vs.find(v => !v.del) : vs[vs.length - 1];
+  return v && !v.del ? v : null;
+}
+function filmsFor(f) {   // 這張照片可選的底片：拍攝用的那卷換成拍攝當時的版本，其他用最新版本
+  const name = filmOfPhoto(f.name), old = filmAt(name, f.time), list = allFilms();
+  if (!old) return list;
+  const i = list.findIndex(x => x.name === old.name);
+  if (i >= 0) list[i] = old; else list.push(old);
+  return list;
+}
+function mergeLib(a, b) {   // 兩邊的版本取聯集，同一個版本以 a 為準
+  const all = new Map();
+  [].concat(b && Array.isArray(b.films) ? b.films : [], a.films).forEach(v => { if (v && v.name && v.t) all.set(v.name + "|" + v.t, v); });
+  return { v: 1, films: [...all.values()].sort((x, y) => x.t < y.t ? -1 : x.t > y.t ? 1 : 0) };
+}
+function addVersion(v) {
+  const films = libDoc.data.films, last = films.filter(x => x.name === v.name).pop();
+  v.t = stamp();
+  if (last && last.t >= v.t) v.t = stamp(new Date(new Date(last.t).getTime() + 1000));   // 同一秒內再存：時間往後推，版本才不會撞在一起
+  libDoc.data = mergeLib({ films: films.concat(v) });
+  refreshFilms();
+  return libDoc.changed();
+}
+const NAME_RE = /^[A-Z0-9_-]{1,10}$/;
+const filmOfPhoto = name => { const m = /^DCIM\d{8}(.+)_\d+\.jpe?g$/i.exec(name); return m ? m[1] : null; };
+
+/* ---------- 手機端沖洗 ---------- */
+const LOOK_SLIDERS = [   // 介面值 → 內部係數
+  ["exp", "曝光", -100, 100, 1], ["con", "對比", -100, 100, .6], ["sat", "飽和度", -100, 100, .8], ["temp", "色溫", -100, 100, .6],
+  ["tint", "色調", -100, 100, .3], ["fade", "褪色", 0, 100, 1], ["grain", "顆粒", 0, 100, 1], ["vig", "暗角", 0, 100, 1],
+  ["hl", "亮部", -100, 100, 1], ["shd", "陰影", -100, 100, 1], ["blk", "黑點", -100, 100, 1], ["vib", "自然飽和度", -100, 100, 1]
+];
+const ADJ_GROUPS = [   // 調整拉桿的分組（參考 Photomator 的 Light / Color）
+  { title: "光線", keys: ["exp", "con", "hl", "shd", "blk"] },
+  { title: "色彩", keys: ["sat", "vib", "temp", "tint"] },
+  { title: "效果", keys: ["fade", "grain", "vig"] }
+];
+const isPlain = look => !look || (!look.mono && !look.sh && !look.hi && LOOK_SLIDERS.every(([k]) => !look[k]));
+function buildPipe(look, strength) {
+  const L = {}; LOOK_SLIDERS.forEach(([k, , , , f]) => L[k] = (look[k] || 0) / 100 * f);
+  const g = Math.pow(2, L.exp), gains = [g * (1 + L.temp * .3), g * (1 + L.tint * .3), g * (1 - L.temp * .3)];
+  const curves = gains.map(k => {
+    const c = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) {
+      let x = Math.min(1, v / 255 * k);
+      x = L.con >= 0 ? x + L.con * (x * x * (3 - 2 * x) - x) * 2 : .5 + (x - .5) * (1 + L.con);   // 正值往 S 曲線、負值壓平
+      x = Math.max(0, Math.min(1, x));
+      if (L.shd) x += L.shd * x * (1 - x) * (1 - x) * 1.6;   // 陰影：影響暗部，最大在 1/3 處
+      if (L.hl) x += L.hl * x * x * (1 - x) * 1.6;           // 亮部：影響亮部，最大在 2/3 處；已過曝的純白不變
+      if (L.blk) { const b = L.blk * .12; x = b > 0 ? (x - b) / (1 - b) : -b + x * (1 + b); }   // 黑點：正值壓黑、負值提亮
+      x = Math.max(0, Math.min(1, x));
+      c[v] = (L.fade * .16 + x * (1 - L.fade * .26)) * 255;
+    }
+    return c;
+  });
+  return { curves, sat: L.sat, vib: L.vib, mono: !!look.mono, sh: look.sh || null, hi: look.hi || null,
+    grain: L.grain, vig: L.vig, k: strength / 100 };
+}
+function applyPipe(px, w, h, P) {
+  const [cr, cg, cb] = P.curves;
+  const sh = P.sh || [0, 0, 0], hi = P.hi || [0, 0, 0], split = !!(P.sh || P.hi);
+  let seed = 12345; const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) - .5;
+  const cx = w / 2, cy = h / 2, rr = 1 / (cx * cx + cy * cy), gs = P.grain * 46 * Math.max(1, w / 1600);
+  for (let y = 0, i = 0; y < h; y++) {
+    const dy = (y - cy) * (y - cy);
+    for (let x = 0; x < w; x++, i += 4) {
+      const R0 = px[i], G0 = px[i + 1], B0 = px[i + 2];
+      let r = cr[R0], g = cg[G0], b = cb[B0];
+      if (P.mono || P.sat) {
+        const l = .299 * r + .587 * g + .114 * b, s = P.mono ? 0 : 1 + P.sat;
+        r = l + (r - l) * s; g = l + (g - l) * s; b = l + (b - l) * s;
+      }
+      if (P.vib && !P.mono) {   // 自然飽和度：越不飽和的顏色變化越多
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = .299 * r + .587 * g + .114 * b, s = 1 + P.vib * (1 - Math.min(1, (mx - mn) / 255));
+        r = l + (r - l) * s; g = l + (g - l) * s; b = l + (b - l) * s;
+      }
+      if (split) { const t = (.299 * r + .587 * g + .114 * b) / 255, u = 1 - t; r += sh[0] * u + hi[0] * t; g += sh[1] * u + hi[1] * t; b += sh[2] * u + hi[2] * t; }
+      if (P.vig) { const f = 1 - P.vig * .75 * ((x - cx) * (x - cx) + dy) * rr * 2; r *= f; g *= f; b *= f; }
+      if (P.grain) { const z = rnd() * gs; r += z; g += z; b += z; }
+      const k = P.k;
+      px[i] = R0 + (r - R0) * k; px[i + 1] = G0 + (g - G0) * k; px[i + 2] = B0 + (b - B0) * k;
+    }
+  }
+}
+function develop(canvas, src, look, strength, maxSide) {
+  const scale = maxSide ? Math.min(1, maxSide / Math.max(src.width, src.height)) : 1;
+  canvas.width = Math.round(src.width * scale); canvas.height = Math.round(src.height * scale);
+  const ctx = canvas.getContext("2d"); ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+  if (!look || isPlain(look) || !strength) return;
+  const im = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  applyPipe(im.data, canvas.width, canvas.height, buildPipe(look, strength));
+  ctx.putImageData(im, 0, 0);
+}
+async function decode(blob) {
+  if (window.createImageBitmap) { try { return await createImageBitmap(blob); } catch (e) {} }
+  return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("圖片解碼失敗")); im.src = URL.createObjectURL(blob); });
+}
+/* ---------- 預覽樣本：內建照片放在記憶卡 /APP/，也可以選最近在相簿看過的照片 ---------- */
+const SAMPLES = [{ id: "portrait", label: "人像" }, { id: "landscape", label: "風景" }, { id: "street", label: "街景" }];
+const sampleImgs = {};
+let samplePhoto = null;   // 最近在相簿看過的照片
+let sampleId = store.get("sample", "portrait"), sampleSrc = null;
+function loadSample(id) {
+  if (!sampleImgs[id]) sampleImgs[id] = getBlob("/APP/" + id + ".jpg", { pri: "lo", timeout: 30000 }).then(decode).catch(() => { delete sampleImgs[id]; return null; });
+  return sampleImgs[id];
+}
+function currentSample() { return (sampleId === "photo" && samplePhoto) || sampleSrc || testPattern(); }
+async function useSample(id) {
+  if (id === "photo" && !samplePhoto) id = "portrait";
+  sampleId = id; store.set("sample", id === "photo" ? "portrait" : id);
+  renderSampleChips();
+  if (id !== "photo") { const img = await loadSample(id); if (sampleId !== id) return; sampleSrc = img; }
+  if ($("#fe").classList.contains("on")) feDraw();
+  renderSlots(); renderLibrary();
+}
+function renderSampleChips() {
+  const box = $("#fe-samples"); box.innerHTML = "";
+  SAMPLES.concat(samplePhoto ? [{ id: "photo", label: "最近看的照片" }] : []).forEach(x => {
+    const b = button(x.label, "chip", () => useSample(x.id));
+    b.setAttribute("aria-pressed", String(x.id === sampleId)); box.appendChild(b);
+  });
+}
+function testPattern() {   // 樣本照片載不到時的備案：膚色、天空、植物、灰階
+  const c = document.createElement("canvas"); c.width = 480; c.height = 320; const x = c.getContext("2d");
+  const sky = x.createLinearGradient(0, 0, 0, 160); sky.addColorStop(0, "#7fb2e5"); sky.addColorStop(1, "#d9e8f3"); x.fillStyle = sky; x.fillRect(0, 0, 480, 160);
+  x.fillStyle = "#5d8a3a"; x.fillRect(0, 160, 480, 80);
+  [["#f1c7a5", 30], ["#d9a07a", 110], ["#a86d4b", 190], ["#c43c2f", 270], ["#e5b931", 350], ["#2f5fa8", 430]].forEach(([col, cx]) => { x.fillStyle = col; x.beginPath(); x.arc(cx, 120, 30, 0, 7); x.fill(); });
+  for (let i = 0; i < 16; i++) { const v = Math.round(i * 17); x.fillStyle = "rgb(" + v + "," + v + "," + v + ")"; x.fillRect(i * 30, 240, 30, 80); }
+  return c;
+}
+function swatch(canvas, film) {
+  develop(canvas, currentSample(), film.look, 100, 200);
+}
+function filmTile(f, onclick, badge, pressed) {   // 底片格子：樣本照片＋名稱，右上角標出裝在哪一格
+  const b = document.createElement("button"); b.type = "button"; b.className = "ftile"; b.title = f.label || f.name;
+  b.innerHTML = "<canvas></canvas><b></b>"; b.querySelector("b").textContent = f.name;
+  if (badge) { const e = document.createElement("em"); e.textContent = badge; b.appendChild(e); }
+  if (pressed != null) b.setAttribute("aria-pressed", String(pressed));
+  swatch(b.querySelector("canvas"), f); b.onclick = onclick; return b;
+}
+
+/* =====================================================================
+   相機的三格
+   ===================================================================== */
+const camState = { names: null, params: [null, null, null] };
+let camReadAt = 0;
+async function readCamera() {
+  const msg = $("#film-msg");
+  try {
+    const x = await cmd(8003);
+    const n = [1, 2, 3].map(i => field(x, "FILM_FILTER_C" + i));
+    if (n.every(Boolean)) camState.names = n;
+    for (let i = 0; i < 3; i++) {
+      const y = await cmd(SLOTS[i].r);
+      const v = PARAMS.map(p => parseInt(field(y, p.key), 10));
+      camState.params[i] = v.some(isNaN) ? null : v;
+    }
+    camReadAt = Date.now();
+  } catch (e) { say(msg, "無法讀取相機的底片", "bad"); }
+  renderSlots(); renderLibrary();
+}
+function slotState(i) {   // 這一格的狀態：{ film, note, warn, fix }
+  const name = camState.names ? camState.names[i] : null, film = findFilm(name), p = camState.params[i];
+  if (!name) return { film: null, note: "" };
+  if (!film) return { film: null, note: "不在底片庫", warn: true, fix: ["這卷底片不在底片庫中。", "加入底片庫", () => openEditor(null, { name: String(name).toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 10), label: "", look: {}, cam: p && !p.every(v => v === -255) ? PARAMS.map((q, j) => toUser(q, p[j])) : NEUTRAL7.slice() })] };
+  if (p && p.every(v => v === -255)) return { film, note: "此格已停用", warn: true, fix: ["此格已停用。", "寫入這卷底片", () => loadFilm(i, film)] };
+  if (p && film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":") !== p.join(":")) return { film, note: "相機設定不同", warn: true, fix: ["相機上的設定與這卷底片不同。", "更新相機", () => loadFilm(i, film)] };
+  return { film, note: film.label || "" };
+}
+function renderSlots() {
+  const box = $("#slots"); box.innerHTML = "";
+  SLOTS.forEach((s, i) => {
+    const name = camState.names ? camState.names[i] : null, st = slotState(i);
+    const b = document.createElement("button"); b.type = "button"; b.className = "slotc";
+    b.innerHTML = '<canvas></canvas><span class="no"></span><b></b><small></small>';
+    b.querySelector(".no").textContent = s.no;
+    b.querySelector("b").textContent = name || "—";
+    const n = b.querySelector("small"); n.textContent = st.note || "\u00a0"; if (st.warn) n.className = "warn";
+    if (st.film) swatch(b.querySelector("canvas"), st.film);
+    b.onclick = () => openPicker(i);
+    box.appendChild(b);
+  });
+}
+function button(text, cls, onclick) { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = onclick; return b; }
+
+async function loadFilm(i, film) {   // 把底片裝進第 i 格：寫名稱（8002）＋機內調色，再讀回確認
+  const msg = $("#film-msg");
+  say(msg, "正在更換 " + SLOTS[i].no + " 的底片…");
+  try {
+    const x = await cmd(8003);
+    const names = [1, 2, 3].map(k => field(x, "FILM_FILTER_C" + k));
+    if (!names.every(Boolean)) throw new Error("無法讀取相機的底片");
+    names[i] = film.name;
+    await cmd(8002, "&str=" + names.join(":"));
+    const after = await cmd(8003);
+    if (field(after, "FILM_FILTER_C" + (i + 1)) !== film.name) throw new Error("底片名稱沒有寫入成功");
+    const str = film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":");
+    const w = await cmd(SLOTS[i].w, "&str=" + str);
+    if (!statusOk(w)) await cmd(SLOTS[i].w, "&par=" + str);
+    const rb = await cmd(SLOTS[i].r);
+    const v = PARAMS.map(p => parseInt(field(rb, p.key), 10));
+    if (v.join(":") !== str) throw new Error("相機設定沒有寫入成功");
+    say(msg, SLOTS[i].no + " 已換成 " + film.name, "ok");
+  } catch (e) { say(msg, SLOTS[i].no + " 更換失敗：" + e.message, "bad"); }
+  await readCamera();
+}
+
+async function writeCamFor(film) {   // 相機上裝著這卷底片的格子，相機內調色不一樣就寫入
+  const str = film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":");
+  const slots = (camState.names || []).map((n, i) => n === film.name && (camState.params[i] || []).join(":") !== str ? i : -1).filter(i => i >= 0);
+  if (!slots.length) return;
+  const ok = [], bad = [];
+  for (const i of slots) { try { await writeSlotParams(i, str); ok.push(SLOTS[i].no); } catch (e) { bad.push(SLOTS[i].no); } }
+  await readCamera();
+  if (bad.length) say($("#film-msg"), "已儲存 " + film.name + "，但 " + bad.join("、") + " 寫入相機失敗，請按該格的「更新」", "bad");
+  else say($("#film-msg"), "已儲存 " + film.name + "，並更新相機的 " + ok.join("、"), "ok");
+}
+
+/* ---------- 選底片 ---------- */
+let pickFor = null;
+function openPicker(i) {
+  pickFor = i; $("#pk-title").textContent = SLOTS[i].no + " 的底片";
+  const st = slotState(i), fix = $("#pk-fix"); fix.innerHTML = ""; fix.hidden = !st.fix;
+  if (st.fix) {
+    const p = document.createElement("p"); p.className = "hint grow"; p.textContent = st.fix[0];
+    const row = document.createElement("div"); row.className = "row";
+    row.append(p, button(st.fix[1], "btn small primary", () => { $("#picker").classList.remove("on"); st.fix[2](); }));
+    fix.appendChild(row);
+  }
+  const box = $("#pk-list"); box.innerHTML = "";
+  const cur = camState.names ? camState.names[i] : null;
+  customFilms.concat(BUILTIN_FILMS).forEach(f => box.appendChild(filmTile(f, async () => { $("#picker").classList.remove("on"); await loadFilm(i, f); }, null, f.name === cur)));
+  $("#picker").classList.add("on");
+}
+$("#pk-close").onclick = () => $("#picker").classList.remove("on");
+
+/* ---------- 試拍 ---------- */
+async function listPhotos() {
+  const x = await cmd(3015, "", { timeout: 15000 });
+  const out = [], re = /<File>([\s\S]*?)<\/File>/g; let m;
+  while ((m = re.exec(x))) {
+    const f = m[1], path = field(f, "FPATH");
+    if (!path || !/\.jpe?g$/i.test(path)) continue;
+    out.push({ path, name: field(f, "NAME") || path.split("\\").pop(), size: +(field(f, "SIZE") || 0), time: field(f, "TIME") || "" });
+  }
+  return out;
+}
+const toUrl = p => "/" + p.replace(/^A:\\/i, "").replace(/\\/g, "/");
+const previewUrl = u => u + "?custom=1&cmd=4002";
+const thumbUrl = u => u + "?custom=1&cmd=4001";
+
+/* ---------- 底片庫 ---------- */
+function renderLibrary() {
+  const used = f => (camState.names || []).map((n, i) => n === f.name ? SLOTS[i].no : null).filter(Boolean).join(" ");
+  const mine = $("#lib-mine"), builtin = $("#lib-builtin"); mine.innerHTML = ""; builtin.innerHTML = "";
+  allFilms().forEach(f => (f.builtin ? builtin : mine).appendChild(filmTile(f, () => openEditor(f), used(f))));
+  const add = document.createElement("button"); add.type = "button"; add.className = "ftile";
+  add.innerHTML = '<span class="plus" aria-hidden="true">＋</span><b>新增</b>';
+  add.onclick = () => openEditor(null, { name: "", label: "", look: {}, cam: NEUTRAL7.slice() });
+  mine.appendChild(add);
+}
+
+/* ---------- 編輯底片 ---------- */
+const fe = { orig: null, f: null };
+function sliderRow(box, label, min, max, value, oninput, rest) {   // rest：雙擊回到的值（預設 0）
+  rest = rest == null ? 0 : rest;
+  const row = document.createElement("div"); row.className = "slider";
+  row.innerHTML = '<label></label><output></output><input type="range" step="1">';
+  row.querySelector("label").textContent = label;
+  const r = row.querySelector("input"), o = row.querySelector("output");
+  r.min = min; r.max = max; r.value = value; r.setAttribute("aria-label", label);
+  const show = () => {   // 從 0（或最小值）填色到目前的值
+    const pos = x => (x - min) / (max - min) * 100, z = pos(Math.max(min, Math.min(0, max))), v = pos(+r.value);
+    r.style.setProperty("--lo", Math.min(z, v) + "%"); r.style.setProperty("--hi", Math.max(z, v) + "%");
+    o.textContent = +r.value > 0 && min < 0 ? "+" + r.value : r.value; o.classList.toggle("changed", +r.value !== rest);
+  };
+  r.oninput = () => { show(); oninput(+r.value); };
+  row.ondblclick = () => { r.value = rest; r.oninput(); };
+  show(); box.appendChild(row); return r;
+}
+const adjOpen = new Set(store.get("adjopen", ["光線"]));   // 展開中的分組，記在手機上
+function renderAdjust(box, look, onChange, ro, base) {   // 分組的調整拉桿，可收合；base：底片原本的值，look 只存與 base 不同的鍵
+  base = base || {}; box.innerHTML = "";
+  ADJ_GROUPS.forEach(g => {
+    const sec = document.createElement("div"); sec.className = "adj-group" + (adjOpen.has(g.title) ? "" : " closed");
+    const head = document.createElement("div"); head.className = "adj-head";
+    head.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="t"></span>';
+    const t = head.querySelector(".t");
+    const count = () => g.keys.filter(k => k in look && look[k] !== (base[k] || 0)).length;
+    const reset = button("重設", "", ev => { ev.stopPropagation(); g.keys.forEach(k => delete look[k]); renderAdjust(box, look, onChange, ro, base); onChange(); });
+    const refresh = () => { const n = count(); t.innerHTML = ""; t.textContent = g.title; if (n) { const e = document.createElement("em"); e.textContent = "· " + n; t.appendChild(e); } reset.hidden = ro || !n; };
+    head.appendChild(reset); sec.appendChild(head);
+    head.onclick = () => { sec.classList.toggle("closed"); sec.classList.contains("closed") ? adjOpen.delete(g.title) : adjOpen.add(g.title); store.set("adjopen", [...adjOpen]); };
+    g.keys.forEach(k => {
+      const [, label, min, max] = LOOK_SLIDERS.find(x => x[0] === k);
+      const r = sliderRow(sec, label, min, max, k in look ? look[k] : base[k] || 0, v => { if (v !== (base[k] || 0)) look[k] = v; else delete look[k]; refresh(); onChange(); }, base[k] || 0);
+      r.disabled = ro;
+    });
+    refresh(); box.appendChild(sec);
+  });
+}
+let feTimer = null;
+let feRaf = 0;
+function feDraw() {   // 同照片：拖拉桿時畫小圖，停手後畫大圖
+  if (!feRaf) feRaf = requestAnimationFrame(() => { feRaf = 0; develop($("#fe-canvas"), currentSample(), fe.f.look, 100, 450); });
+  clearTimeout(feTimer); feTimer = setTimeout(() => develop($("#fe-canvas"), currentSample(), fe.f.look, 100, 900), 250);
+}
+function openEditor(film, draft) {
+  fe.orig = film; fe.f = JSON.parse(JSON.stringify(film || draft)); fe.onSaved = null;
+  const ro = !!(film && film.builtin), isNew = !film;
+  $("#fe-title").textContent = isNew ? "新增底片" : fe.f.name;
+  $("#fe-ro").hidden = !ro;
+  $("#fe-save").hidden = ro;
+  $("#fe-del").hidden = ro || isNew;
+  $("#fe-dup").hidden = isNew;
+  $("#fe-name").value = fe.f.name; $("#fe-name").disabled = !isNew;
+  $("#fe-label").value = fe.f.label || ""; $("#fe-label").disabled = ro;
+  renderSampleChips();
+  renderAdjust($("#fe-look"), fe.f.look, feDraw, ro);
+  $("#fe-mono").checked = !!fe.f.look.mono; $("#fe-mono").disabled = ro;
+  const cam = $("#fe-cam"); cam.innerHTML = "";
+  PARAMS.forEach((p, j) => { const r = sliderRow(cam, p.name, -100, 100, fe.f.cam[j], v => { fe.f.cam[j] = v; }); r.disabled = ro; r.parentNode.title = p.note; });
+  say($("#fe-msg"), "");
+  $("#fe").classList.add("on"); feDraw();
+}
+$("#fe-mono").onchange = () => { fe.f.look.mono = $("#fe-mono").checked ? 1 : 0; feDraw(); };
+$("#fe-close").onclick = () => $("#fe").classList.remove("on");
+$("#fe-save").onclick = () => {
+  const msg = $("#fe-msg"), name = $("#fe-name").value.trim().toUpperCase();
+  if (!fe.orig) {
+    if (!NAME_RE.test(name)) { say(msg, "名稱只能用英文、數字、- 和 _，最多 10 字", "bad"); return; }
+    if (findFilm(name)) { say(msg, "已經有同名的底片", "bad"); return; }
+    fe.f.name = name;
+  }
+  fe.f.label = $("#fe-label").value.trim();
+  if (!addVersion({ name: fe.f.name, label: fe.f.label, look: fe.f.look, cam: fe.f.cam })) { say(msg, "手機儲存空間不足", "bad"); return; }
+  $("#fe").classList.remove("on"); renderLibrary(); renderSlots();
+  say($("#film-msg"), "已儲存 " + fe.f.name, "ok");
+  writeCamFor(fe.f);
+  if (fe.onSaved) fe.onSaved(findFilm(fe.f.name));
+};
+$("#fe-dup").onclick = () => {
+  const base = fe.f, draft = JSON.parse(JSON.stringify({ name: "", label: (base.label || base.name) + " 複製", look: base.look, cam: base.cam }));
+  openEditor(null, draft); say($("#fe-msg"), "請輸入新名稱", "warn");
+};
+$("#fe-del").onclick = () => {
+  if (!armed($("#fe-del"), "再按一次確認刪除")) return;
+  addVersion({ name: fe.orig.name, del: 1 });
+  $("#fe").classList.remove("on"); renderLibrary(); renderSlots();
+  say($("#film-msg"), "已刪除 " + fe.f.name, "ok");
+};
+
+async function writeSlotParams(i, str) {   // 寫入第 i 格的相機內調色，讀回確認
+  const w = await cmd(SLOTS[i].w, "&str=" + str);
+  if (!statusOk(w)) await cmd(SLOTS[i].w, "&par=" + str);
+  const rb = await cmd(SLOTS[i].r);
+  const v = PARAMS.map(p => parseInt(field(rb, p.key), 10));
+  if (v.join(":") !== str) throw new Error("相機設定沒有寫入成功");
+}
+
+/* =====================================================================
+   相簿（只處理底片原檔）
+   每張底片照片有兩份：Original_Film（原檔）和隱藏的 ._FILM（原生 App 沖洗用的佇列）。
+   兩份的序號不同，但「日期＋底片名稱」和檔案大小一樣，用這兩個條件配對；刪除時兩份一起刪。
+   ===================================================================== */
+const ORIG = "\\DCIM\\Original_Film\\", FILMQ = "\\DCIM\\._FILM\\";
+const gal = { orig: [], pairOf: new Map(), orphans: [], thumbs: new Map(), loaded: false, selecting: false, sel: new Set() };
+/* 每張照片的設定存在記憶卡 /APP/photos.json：{ v: 1, photos: { 檔名: { t, film, k, adj } } }。
+   只有 t 的一筆代表「已還原成拍攝的底片」或照片已刪除；兩邊合併時每張照片取 t 比較新的一筆。 */
+function mergeDev(a, b) {
+  const out = {};
+  [b && b.photos && typeof b.photos === "object" ? b.photos : {}, a.photos].forEach(p => {
+    for (const k in p) if (p[k] && p[k].t && (!out[k] || p[k].t >= out[k].t)) out[k] = p[k];
+  });
+  return { v: 1, photos: Object.fromEntries(Object.keys(out).sort().map(k => [k, out[k]])) };
+}
+const devDoc = cardDoc("photos.json", "choices", () => ({ v: 1, photos: {} }), mergeDev, () => { if (gal.loaded && !$("#viewer").classList.contains("on")) renderGrid(); });
+if (!store.get("choices", null) && store.get("dev", null)) {   // 舊版只存在手機
+  const old = store.get("dev", {}); for (const k in old) devDoc.data.photos[k] = Object.assign({ t: "0000/00/00 00:00:00" }, old[k]); devDoc.changed();
+}
+function setChoice(name, c) { devDoc.data.photos[name] = Object.assign({ t: stamp() }, c); devDoc.changed(); }
+const seqOf = name => { const m = /_(\d+)\.jpe?g$/i.exec(name); return m ? +m[1] : 0; };
+const stemOf = name => name.replace(/_\d+\.jpe?g$/i, "");
+const dateOf = name => { const m = /^DCIM(\d{2})(\d{2})(\d{4})/i.exec(name); return m ? m[3] + "/" + m[1] + "/" + m[2] : "其他"; };
+function choiceOf(f) {
+  const e = devDoc.data.photos[f.name], c = e && e.film ? e : null, shot = filmOfPhoto(f.name), films = filmsFor(f);
+  const film = (c && byName(films, c.film)) || byName(films, shot) || findFilm("STD");
+  const pinned = c && c.fv ? libDoc.data.films.find(v => v.name === c.film && v.t === c.fv && !v.del) : null;   // 從照片覆蓋底片後，這張固定用覆蓋後的版本
+  return { film: pinned || film, pin: pinned ? c.fv : null, k: c ? c.k : 100, adj: c && c.adj ? Object.assign({}, c.adj) : {}, shot, changed: !!c };
+}
+async function loadGallery() {
+  $("#gal-info").textContent = "載入中…";
+  try {
+    const all = await listPhotos();
+    const orig = all.filter(f => f.path.includes(ORIG)).sort((a, b) => seqOf(a.name) - seqOf(b.name));
+    const film = all.filter(f => f.path.includes(FILMQ)).sort((a, b) => seqOf(a.name) - seqOf(b.name));
+    const pool = new Map();
+    film.forEach(f => { const k = stemOf(f.name) + "|" + f.size; if (!pool.has(k)) pool.set(k, []); pool.get(k).push(f); });
+    gal.pairOf = new Map();
+    orig.forEach(o => { const q = pool.get(stemOf(o.name) + "|" + o.size); if (q && q.length) gal.pairOf.set(o.path, q.shift()); });
+    gal.orphans = [].concat(...pool.values());
+    roll.shot = film.length; renderStatus();
+    gal.orig = orig.reverse();
+    for (const p of gal.sel) if (!gal.orig.some(f => f.path === p)) gal.sel.delete(p);
+    gal.loaded = true; renderGrid(); renderTidy();
+  } catch (e) { $("#gal-info").textContent = "無法載入照片：" + e.message; }
+}
+const thumbObserver = "IntersectionObserver" in window ? new IntersectionObserver(entries => {
+  entries.forEach(en => { if (en.isIntersecting) { thumbObserver.unobserve(en.target); loadThumb(en.target); } });
+}, { rootMargin: "200px" }) : null;
+async function loadThumb(tile) {
+  const url = tile.dataset.url, img = tile.querySelector("img");
+  if (gal.thumbs.has(url)) { img.src = gal.thumbs.get(url); return; }
+  try {
+    const b = await getBlob(previewUrl(url), { pri: "lo", timeout: 20000 }).catch(() => getBlob(thumbUrl(url), { pri: "lo", timeout: 15000 }));
+    const o = URL.createObjectURL(b); gal.thumbs.set(url, o); img.src = o;
+  } catch (e) { img.alt = "沒有縮圖"; }
+}
+function renderGrid() {
+  const box = $("#gal-grid"); box.innerHTML = "";
+  $("#gal-info").textContent = gal.loaded && gal.orig.length ? gal.orig.length + " 張照片" : "";
+  $("#gal-out").disabled = !gal.orig.length;
+  if (gal.loaded && !gal.orig.length) box.innerHTML = '<p class="empty" style="grid-column:1/-1">還沒有照片</p>';
+  gal.orig.forEach(f => {
+    const t = document.createElement("button"); t.type = "button"; t.className = "tile"; t.dataset.url = toUrl(f.path);
+    t.innerHTML = '<img alt=""><span></span><i class="check" aria-hidden="true"></i>';
+    const c = choiceOf(f);
+    t.querySelector("span").textContent = c.changed || findFilm(c.shot) ? c.film.name : c.shot || "";
+    t.setAttribute("aria-label", f.name + "，底片 " + c.film.name);
+    t.setAttribute("aria-pressed", String(gal.sel.has(f.path)));
+    t.onclick = () => {
+      if (!gal.selecting) return openViewer(f);
+      gal.sel.has(f.path) ? gal.sel.delete(f.path) : gal.sel.add(f.path);
+      t.setAttribute("aria-pressed", String(gal.sel.has(f.path))); renderSelBar();
+    };
+    box.appendChild(t);
+    if (thumbObserver) thumbObserver.observe(t); else loadThumb(t);
+  });
+  renderSelBar();
+}
+$("#gal-refresh").onclick = loadGallery;
+
+/* ---------- 選取與刪除 ---------- */
+function renderSelBar() {
+  document.body.classList.toggle("selecting", gal.selecting);
+  $("#gal-select").textContent = gal.selecting ? "取消" : "選取";
+  $("#gal-selbar").hidden = !gal.selecting;
+  if (!gal.selecting) return;
+  const n = gal.sel.size;
+  $("#gal-selcount").textContent = n ? "已選 " + n + " 張" : "點選照片";
+  $("#gal-del").disabled = !n;
+  const box = $("#gal-dates"); box.innerHTML = "";
+  [["全選", () => gal.orig]].concat([...new Set(gal.orig.map(f => dateOf(f.name)))].map(d => [d, () => gal.orig.filter(f => dateOf(f.name) === d)])).forEach(([label, pick]) => {
+    box.appendChild(button(label, "chip", () => { const l = pick(); const all = l.every(f => gal.sel.has(f.path)); l.forEach(f => all ? gal.sel.delete(f.path) : gal.sel.add(f.path)); renderGrid(); }));
+  });
+}
+$("#gal-select").onclick = () => { gal.selecting = !gal.selecting; if (!gal.selecting) gal.sel.clear(); renderGrid(); };
+function deletable(path) { return /^A:\\DCIM\\(Original_Film|\._FILM)\\[^\\]+\.jpe?g$/i.test(path); }   // 只允許刪這兩個資料夾裡的 JPG
+async function deleteMany(paths, msgEl) {
+  let done = 0;
+  for (const p of paths) {
+    say(msgEl, "刪除中 " + (++done) + "/" + paths.length);
+    if (!deletable(p)) continue;
+    try { await cmd(4003, "&str=" + p, { timeout: 15000 }); } catch (e) {}   // 韌體：sscanf("&str=%s") → 檢查屬性 → 刪除
+  }
+  // 以檔案清單為準確認；還在的再用檔案伺服器的 ?del=1 試一次
+  let left = (await listPhotos()).filter(f => paths.includes(f.path)).map(f => f.path);
+  for (const p of left) { if (deletable(p)) try { await getBlob(toUrl(p) + "?del=1", { pri: "hi", timeout: 15000 }); } catch (e) {} }
+  if (left.length) left = (await listPhotos()).filter(f => paths.includes(f.path)).map(f => f.path);
+  paths.forEach(p => { const n = p.split("\\").pop(); if (!left.includes(p) && devDoc.data.photos[n]) setChoice(n, {}); });   // 之後同名的新照片不會沿用
+  return { ok: paths.length - left.length, left };
+}
+const filesFor = origPaths => [].concat(...origPaths.map(p => gal.pairOf.get(p) ? [p, gal.pairOf.get(p).path] : [p]));
+async function confirmDelete(btn, label, paths, msgEl, after) {
+  if (!armed(btn, "再按一次確認刪除")) { say(msgEl, label + "，刪除後無法復原", "warn"); return; }
+  btn.disabled = true;
+  try {
+    const r = await deleteMany(paths, msgEl);
+    say(msgEl, r.left.length ? "有部分檔案無法刪除" : "已刪除", r.left.length ? "bad" : "ok");
+    if (after) after(r);
+  } catch (e) { say(msgEl, "刪除失敗：" + e.message, "bad"); }
+  btn.disabled = false; loadGallery();
+}
+$("#gal-del").onclick = () => {
+  const paths = filesFor([...gal.sel]);
+  confirmDelete($("#gal-del"), "將刪除 " + gal.sel.size + " 張照片", paths, $("#gal-msg"), () => gal.sel.clear());
+};
+function renderTidy() {   // ._FILM 裡沒有原檔的檔案：照片刪了，官方 App 沖洗時還是會沖出來
+  const box = $("#gal-tidy"), n = gal.orphans.length; box.innerHTML = ""; box.hidden = !n;
+  if (!n) return;
+  const p = document.createElement("p"); p.className = "hint";
+  p.textContent = "有 " + n + " 張已刪除的照片仍在官方 App 的沖洗清單中。";
+  const b = button("清除", "btn danger", () => confirmDelete(b, "將清除 " + n + " 張", gal.orphans.map(f => f.path), $("#gal-msg")));
+  box.append(p, b);
+}
+
+/* ---------- 照片：沖洗、下載、刪除 ---------- */
+const view = { f: null, src: null, lo: null, hi: null, films: [], film: null, pin: null, k: 100, adj: {} };
+const shotOf = f => byName(filmsFor(f), filmOfPhoto(f.name)) || findFilm("STD");
+const lookOf = (film, adj) => Object.assign({}, film.look, adj);   // 「調整」從底片的設定開始，改過的鍵蓋過底片
+let vTimer = null, vMode = store.get("vmode", "film");
+function vDraw(showOriginal, lo) {
+  if (!view.src) return;
+  develop($("#v-canvas"), lo ? view.lo : view.hi, showOriginal ? null : lookOf(view.film, view.adj), view.k, 0);
+  $("#v-tag").hidden = !showOriginal;
+}
+let vRaf = 0;
+function vDrawSoon() {   // 拖拉桿時每個畫面畫一次 700px 的小圖，停手 250 ms 後再畫 1600px
+  if (!vRaf) vRaf = requestAnimationFrame(() => { vRaf = 0; vDraw(false, true); });
+  clearTimeout(vTimer); vTimer = setTimeout(() => vDraw(), 250);
+}
+function scaled(img, n) {   // 先縮好的來源，之後每次重畫不用再從 4000px 原圖縮
+  const k = Math.min(1, n / Math.max(img.width, img.height)), c = document.createElement("canvas");
+  c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+function vSave() {
+  const shot = shotOf(view.f), noAdj = !Object.keys(view.adj).length;
+  if (view.film.name === shot.name && view.k === 100 && noAdj && !view.pin) { if (devDoc.data.photos[view.f.name]) setChoice(view.f.name, {}); }
+  else setChoice(view.f.name, Object.assign({ film: view.film.name, k: view.k }, view.pin ? { fv: view.pin } : {}, noAdj ? {} : { adj: Object.assign({}, view.adj) }));
+  renderSaveFilm();
+}
+function renderViewerFilms() {   // 濾鏡縮圖列：每卷底片套在這張照片（含目前的調整）上
+  const box = $("#v-films"); box.innerHTML = "";
+  view.films = filmsFor(view.f).map(f => view.pin && f.name === view.film.name ? view.film : f);
+  view.films.forEach(f => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "preset"; b.title = f.label || "";
+    b.innerHTML = "<canvas></canvas><span></span>"; b.querySelector("span").textContent = f.name === "STD" ? "原色" : f.name;
+    b.setAttribute("aria-pressed", String(f === view.film));
+    b.onclick = () => {
+      view.film = f; view.pin = null; vSave(); vDraw(); renderMeta(); renderStrength(); renderAdjustPanel();
+      box.querySelectorAll(".preset").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    };
+    box.appendChild(b);
+  });
+  drawThumbs();
+  const on = box.querySelector('[aria-pressed="true"]'); if (on) box.scrollLeft = on.offsetLeft - box.clientWidth / 2 + 28;
+}
+function drawThumbs() {
+  if (!view.src) return;
+  const base = document.createElement("canvas"); develop(base, view.lo, null, 0, 160);
+  [...$("#v-films").children].forEach((b, i) => develop(b.querySelector("canvas"), base, lookOf(view.films[i], view.adj), 100, 160));
+}
+function renderStrength() {
+  const box = $("#v-strength"); box.innerHTML = ""; box.hidden = isPlain(view.film.look);
+  sliderRow(box, "強度", 0, 100, view.k, v => { view.k = v; vSave(); vDrawSoon(); }, 100);
+}
+function setMode(m) {
+  vMode = m; store.set("vmode", m);
+  document.querySelectorAll("#v-modes button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+  $("#v-film-panel").hidden = m !== "film"; $("#v-adjust-panel").hidden = m !== "adjust"; renderSaveFilm();
+  if (m === "film") drawThumbs();
+}
+document.querySelectorAll("#v-modes button").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+function renderAdjustPanel() { renderAdjust($("#v-adjust-panel"), view.adj, () => { vSave(); vDrawSoon(); }, false, view.film.look); renderSaveFilm(); }
+function renderSaveFilm() {   // 有調整時：存成新底片，或把調整寫回這卷底片（內建底片不能改）
+  const has = Object.keys(view.adj).length > 0;
+  $("#v-savefilm").hidden = !has || vMode !== "adjust";
+  $("#v-overwrite").hidden = view.film.builtin; $("#v-overwrite").textContent = "更新 " + view.film.name;
+}
+$("#v-asnew").onclick = () => {
+  const f = view.f, look = lookOf(view.film, view.adj);
+  if (samplePhoto) useSample("photo");
+  openEditor(null, { name: "", label: "", look, cam: view.film.cam.slice() });
+  say($("#fe-msg"), "請輸入新底片的名稱", "warn");
+  fe.onSaved = film => {   // 這張改用新底片，調整歸零（已經存進底片裡）
+    if (view.f !== f) return;
+    view.film = film; view.pin = null; view.adj = {};
+    vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderMeta(); vDraw();
+    say($("#v-msg"), "已存成底片 " + film.name, "ok");
+  };
+};
+$("#v-overwrite").onclick = () => {
+  const btn = $("#v-overwrite"), f = view.film;
+  if (f.builtin || !armed(btn, "再按一次覆蓋 " + f.name)) return;
+  const cur = findFilm(f.name) || f;
+  const v = { name: f.name, label: cur.label, look: lookOf(f, view.adj), cam: cur.cam };
+  if (!addVersion(v)) { say($("#v-msg"), "手機儲存空間不足", "bad"); return; }
+  view.film = v; view.pin = v.t; view.adj = {};
+  vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderMeta(); vDraw(); renderLibrary();
+  say($("#v-msg"), "已更新 " + f.name + "，之後拍的照片也會用新設定", "ok");
+  writeCamFor(v);
+};
+$("#v-more").onclick = () => { const m = $("#v-menu"); m.hidden = !m.hidden; $("#v-more").setAttribute("aria-expanded", String(!m.hidden)); };
+$("#v-reset").onclick = () => {
+  view.film = shotOf(view.f); view.pin = null; view.k = 100; view.adj = {};
+  vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderMeta(); vDraw(); $("#v-menu").hidden = true;
+};
+function renderMeta() {
+  const f = view.f, shot = filmOfPhoto(f.name);
+  $("#v-meta").textContent = ["拍攝底片 " + (shot || "未知"), f.size ? (f.size / 1048576).toFixed(1) + " MB" : ""].filter(Boolean).join(" · ");
+}
+function openViewer(f) {
+  const c = choiceOf(f);
+  Object.assign(view, { f, src: null, lo: null, hi: null, film: c.film, pin: c.pin, k: c.k, adj: c.adj });
+  $("#v-title").textContent = f.time || dateOf(f.name); say($("#v-msg"), "載入中…");
+  const cv = $("#v-canvas"); cv.width = 1000; cv.height = 668; $("#v-tag").hidden = true; $("#v-menu").hidden = true;   // 相機照片是 4000×2672
+  const th = gal.thumbs.get(toUrl(f.path));
+  if (th) { const im = new Image(); im.onload = () => { if (view.f !== f || view.src) return; cv.height = Math.round(1000 * im.naturalHeight / im.naturalWidth); cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height); }; im.src = th; }
+  renderMeta(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); setMode(vMode);
+  const url = toUrl(f.path);
+  getBlob(url, { pri: "hi", timeout: 60000 })
+    .then(decode).then(img => { if (view.f !== f) return; view.src = img; view.hi = scaled(img, 1600); view.lo = scaled(img, 700); samplePhoto = img; vDraw(); drawThumbs(); say($("#v-msg"), ""); })
+    .catch(e => say($("#v-msg"), "載入失敗：" + e.message, "bad"));
+  $("#viewer").classList.add("on");
+}
+const cmp = $("#v-cmp");
+cmp.addEventListener("pointerdown", () => vDraw(true));
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => cmp.addEventListener(ev, () => vDraw(false)));
+cmp.addEventListener("contextmenu", e => e.preventDefault());
+const feCmp = $("#fe-cmp");   // 底片編輯器：按住對照沒套底片的樣本
+feCmp.addEventListener("pointerdown", () => { clearTimeout(feTimer); develop($("#fe-canvas"), currentSample(), null, 0, 900); $("#fe-tag").hidden = false; });
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => feCmp.addEventListener(ev, () => { if ($("#fe-tag").hidden) return; $("#fe-tag").hidden = true; feDraw(); }));
+feCmp.addEventListener("contextmenu", e => e.preventDefault());
+$("#v-close").onclick = () => { $("#viewer").classList.remove("on"); view.f = null; if (gal.loaded) renderGrid(); };
+$("#v-download").onclick = async () => {
+  const f = view.f; if (!f) return;
+  say($("#v-msg"), "下載中…");
+  try {
+    const b = await getBlob(toUrl(f.path), { pri: "hi", timeout: 60000 });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    say($("#v-msg"), "已下載，可在「檔案」App 的下載項目找到", "ok");
+  } catch (e) { say($("#v-msg"), "下載失敗：" + e.message, "bad"); }
+};
+$("#v-develop").onclick = async () => {
+  const f = view.f; if (!f) return;
+  const btn = $("#v-develop"); btn.disabled = true;
+  try {
+    say($("#v-msg"), "處理中…");
+    const img = view.src || await decode(await getBlob(toUrl(f.path), { pri: "hi", timeout: 60000 }));
+    await sleep(50);
+    const { blob, name } = await developPhoto(f, img), o = URL.createObjectURL(blob);
+    $("#r-img").src = o; $("#r-dl").href = o; $("#r-dl").download = name;
+    $("#result").classList.add("on"); say($("#v-msg"), "");
+  } catch (e) { say($("#v-msg"), "處理失敗：" + e.message, "bad"); }
+  btn.disabled = false;
+};
+$("#r-close").onclick = () => $("#result").classList.remove("on");
+async function developPhoto(f, img) {   // 依這張照片的底片、強度與調整輸出全尺寸 JPG
+  const c = choiceOf(f), cv = document.createElement("canvas");
+  develop(cv, img, lookOf(c.film, c.adj), c.k, 0);
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", .92));
+  cv.width = cv.height = 0;   // 馬上釋放大畫布，iOS 的畫布記憶體有限
+  if (!blob) throw new Error("無法輸出照片");
+  return { blob, name: f.name.replace(/\.jpe?g$/i, "") + "_" + c.film.name + (Object.keys(c.adj).length ? "_edit" : "") + ".jpg" };
+}
+
+/* ---------- 全部拿出 ----------
+   逐張沖洗，好了就出現「存」：iOS 只有在使用者點擊時才允許下載，所以每張都要點一次。
+   最多先沖好 2 張等著存，避免手機記憶體不夠；存完 1 分鐘後釋放。照片都存好後，由使用者確認再從相機清除（含 ._FILM）。 */
+const out = { items: [], busy: false, open: false };
+function openOut() {
+  if (!gal.orig.length) return;
+  out.items = gal.orig.map(f => ({ f, state: "wait", url: null, name: "" }));
+  out.open = true; say($("#out-msg"), ""); $("#out").classList.add("on");
+  renderOut(); pumpOut();
+}
+function closeOut() {
+  out.open = false; out.items.forEach(it => { if (it.url) URL.revokeObjectURL(it.url); }); out.items = [];
+  $("#out").classList.remove("on");
+}
+async function pumpOut() {
+  if (out.busy) return;
+  out.busy = true;
+  try {
+    while (out.open) {
+      const it = out.items.find(x => x.state === "wait");
+      if (!it || out.items.filter(x => x.state === "ready").length >= 2) break;
+      it.state = "work"; renderOut();
+      try {
+        const img = await decode(await getBlob(toUrl(it.f.path), { pri: "hi", timeout: 60000 }));
+        const r = await developPhoto(it.f, img); if (img.close) img.close();
+        it.url = URL.createObjectURL(r.blob); it.name = r.name; it.state = "ready";
+      } catch (e) { it.state = "fail"; }
+      renderOut();
+    }
+  } finally { out.busy = false; }
+}
+function renderOut() {
+  const box = $("#out-list"); box.innerHTML = "";
+  const n = out.items.length, done = out.items.filter(x => x.state === "done").length;
+  $("#out-title").textContent = "拿出照片 · " + n + " 張";
+  $("#out-info").textContent = done === n ? "全部存好了" : "沖好的照片按「存」存到手機。已存 " + done + " / " + n;
+  out.items.forEach(it => {
+    const row = document.createElement("div"); row.className = "orow";
+    row.innerHTML = '<img alt=""><div><b></b><span></span></div><div></div>';
+    const th = gal.thumbs.get(toUrl(it.f.path)); if (th) row.querySelector("img").src = th;
+    row.querySelector("b").textContent = choiceOf(it.f).film.name;
+    row.querySelector("span").textContent = it.f.time || dateOf(it.f.name);
+    const act = row.lastChild;
+    if (it.state === "ready") {
+      const a = document.createElement("a"); a.className = "btn small primary"; a.textContent = "存"; a.href = it.url; a.download = it.name;
+      a.onclick = () => setTimeout(() => {
+        it.state = "done"; renderOut(); pumpOut();
+        setTimeout(() => { if (it.state === "done" && it.url) { URL.revokeObjectURL(it.url); it.url = null; } }, 60000);
+      }, 300);
+      act.appendChild(a);
+    } else if (it.state === "done") {
+      const t = document.createElement("span"); t.className = "done"; t.textContent = "✓ ";
+      act.append(t, button("再存", "btn small", () => { it.state = it.url ? "ready" : "wait"; renderOut(); pumpOut(); }));
+    } else if (it.state === "fail") act.appendChild(button("重試", "btn small", () => { it.state = "wait"; renderOut(); pumpOut(); }));
+    else act.innerHTML = '<span class="hint">' + (it.state === "work" ? "沖洗中…" : "等待") + "</span>";
+    box.appendChild(row);
+  });
+}
+$("#gal-out").onclick = openOut;
+$("#out-close").onclick = closeOut;
+$("#out-clear").onclick = () => {
+  const n = out.items.length, left = out.items.filter(x => x.state !== "done").length;
+  const paths = filesFor(out.items.map(x => x.f.path)).concat(gal.orphans.map(f => f.path));   // 連同沒有原檔的 ._FILM 一起清
+  confirmDelete($("#out-clear"), (left ? "還有 " + left + " 張沒存，" : "") + "將從相機清除 " + n + " 張", paths, $("#out-msg"), r => { if (!r.left.length) closeOut(); });
+};
+$("#v-delete").onclick = () => {
+  const f = view.f; if (!f) return;
+  const paths = filesFor([f.path]);
+  $("#v-menu").hidden = false;
+  confirmDelete($("#v-delete"), "將刪除這張照片", paths, $("#v-msg"), r => {
+    if (!r.left.length) { $("#viewer").classList.remove("on"); view.f = null; }
+  });
+};
+
+/* =====================================================================
+   設定與相機資訊
+   ===================================================================== */
+const APO = [{ v: 0, label: "關閉" }, { v: 1, label: "3 分" }, { v: 2, label: "5 分" }, { v: 3, label: "10 分" }];
+const LIMITS = [36, 72, 99];   // 1～99 都可以；0 或 ≥100 會變成每次拍照都判定底片已滿
+const fmtBytes = v => { if (v == null) return null; const n = +v; return isNaN(n) ? v : n > 1e6 ? (n / 1073741824).toFixed(2) + " GB" : n + ""; };
+function segment(box, items, cur, onPick) {
+  box.innerHTML = "";
+  items.forEach(it => { const b = button(it.label, "", () => onPick(it.v)); b.setAttribute("aria-pressed", String(it.v === cur)); box.appendChild(b); });
+}
+async function loadInfo() {
+  const rows = [["型號", 8018, valueOf], ["韌體版本", 3012, valueOf],
+    ["剩餘空間", 3017, x => fmtBytes(valueOf(x))], ["可拍張數", 1003, valueOf]];
+  const dl = $("#set-info"); dl.innerHTML = "";
+  const cells = rows.map(([label]) => {   // 先排好所有列，值的位置用固定大小的佔位，讀到再填入
+    const dt = document.createElement("dt"), dd = document.createElement("dd");
+    dt.textContent = label; dl.append(dt, dd); return dd;
+  });
+  try {   // 3014 會列出 3007（自動關機）與 8004（張數上限）的目前值；先讀，設定項目才不會最後才出現
+    const m = statusMap(await cmd(3014, "", { timeout: 15000 })); renderApo(m["3007"]);
+    if (m["8004"] != null) { store.set("limit", m["8004"]); renderLimit(); }
+  } catch (e) { renderApo(undefined); }
+  for (const [i, [, n, fmt]] of rows.entries()) {
+    try { const v = fmt(await cmd(n)); cells[i].textContent = v == null ? "—" : v; }
+    catch (e) { cells[i].textContent = "—"; }
+  }
+}
+function renderApo(cur) {
+  segment($("#set-apo"), APO, cur, async v => {
+    try { const x = await cmd(3007, "&par=" + v); say($("#set-msg"), statusOk(x) ? "" : "設定失敗", statusOk(x) ? "" : "bad"); renderApo(statusOk(x) ? v : cur); }
+    catch (e) { say($("#set-msg"), "設定失敗：" + e.message, "bad"); }
+  });
+}
+function renderLimit() {
+  const cur = store.get("limit", null), opts = LIMITS.concat(cur > 0 && !LIMITS.includes(cur) ? [cur] : []).sort((a, b) => a - b);
+  segment($("#set-limit"), opts.map(v => ({ v, label: v + " 張" })), cur, async v => {
+    try { const x = await cmd(8004, "&par=" + v); if (statusOk(x)) store.set("limit", v); say($("#set-msg"), statusOk(x) ? "" : "設定失敗", statusOk(x) ? "" : "bad"); renderLimit(); }
+    catch (e) { say($("#set-msg"), "設定失敗：" + e.message, "bad"); }
+  });
+}
+const pad2 = n => (n < 10 ? "0" : "") + n;
+async function syncClock() {
+  // 韌體用 sscanf("%d-%d-%d") / ("%d:%d:%d")，格式錯也回 Status 0，所以要看下一張照片的檔名確認
+  const d = new Date();
+  await cmd(3005, "&str=" + d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()));
+  const t = new Date();
+  await cmd(3006, "&str=" + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + ":" + pad2(t.getSeconds()));
+}
+$("#set-refresh").onclick = loadInfo;
+function renderTheme() {
+  const cur = store.get("theme", "auto");
+  if (cur === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = cur;
+  segment($("#set-theme"), [{ v: "auto", label: "跟隨系統" }, { v: "light", label: "淺色" }, { v: "dark", label: "深色" }], cur, v => { store.set("theme", v); renderTheme(); });
+}
+$("#set-reset").onclick = async () => {
+  if (!armed($("#set-reset"), "再按一次確認", 3000)) { say($("#set-msg"), "相機的拍攝設定將恢復為原廠值", "warn"); return; }
+  try { const x = await cmd(3011); say($("#set-msg"), statusOk(x) ? "已恢復原廠設定" : "操作失敗", statusOk(x) ? "ok" : "bad"); }
+  catch (e) { say($("#set-msg"), "失敗：" + e.message, "bad"); }
+};
+
+/* ---------- 存到照片：交給 https 的轉手頁 ----------
+   iOS 只讓 https 頁面用分享選單一次存多張照片（相機只有 http），所以打開放在 GitHub Pages 的轉手頁，
+   等它說「準備好了」再用 postMessage 把沖好的照片交過去，由它叫出分享選單。照片只在手機內傳遞。 */
+const SAVER_URL = "https://loldotenv.github.io/open-rewindpix/saver/", SAVER_ORIGIN = new URL(SAVER_URL).origin;
+function openSaver() {   // 一定要在點擊當下同步呼叫，不然 iOS 會擋掉彈出視窗
+  const w = window.open(SAVER_URL, "ps135-saver");
+  let ready = false, wake = null, saved = null;
+  const on = ev => {
+    if (ev.origin !== SAVER_ORIGIN || !ev.data) return;
+    if (ev.data.type === "ps135-saver-ready") { ready = true; if (wake) wake(); }
+    if (ev.data.type === "ps135-saved" && saved) saved(ev.data.n);
+  };
+  window.addEventListener("message", on);
+  return {
+    ok: !!w,
+    async send(items, ms) {   // items：[{ name, blob }]
+      if (!w) throw new Error("無法打開存檔頁");
+      if (!ready) await new Promise((res, rej) => { wake = res; setTimeout(() => rej(new Error("存檔頁沒有回應")), ms || 20000); });
+      w.postMessage({ type: "ps135-photos", files: items }, SAVER_ORIGIN);
+    },
+    onSaved(fn) { saved = fn; },
+    close() { window.removeEventListener("message", on); }
+  };
+}
+$("#dev-saver").onclick = async () => {
+  const msg = $("#dev-saver-msg"), sv = openSaver();
+  if (!sv.ok) { say(msg, "無法打開存檔頁（彈出視窗被擋）", "bad"); return; }
+  sv.onSaved(n => { say(msg, "存檔頁回報：已分享 " + n + " 張", "ok"); addTrace("存到照片：已分享 " + n + " 張"); });
+  try {
+    say(msg, "沖洗中…");
+    const f = (await listPhotos()).filter(p => p.path.includes(ORIG)).sort((a, b) => seqOf(b.name) - seqOf(a.name))[0];
+    if (!f) throw new Error("相機裡沒有照片");
+    const img = await decode(await getBlob(toUrl(f.path), { pri: "hi", timeout: 60000 }));
+    const r = await developPhoto(f, img); if (img.close) img.close();
+    say(msg, "等待存檔頁…");
+    await sv.send([{ name: r.name, blob: r.blob }]);
+    say(msg, "已交給存檔頁（" + (r.blob.size / 1048576).toFixed(1) + " MB），請到那一頁按「存到照片」", "ok");
+    addTrace("存到照片：已傳 " + r.name);
+  } catch (e) { say(msg, "失敗：" + e.message, "bad"); addTrace("存到照片失敗：" + e.message); }
+};
+
+/* ---------- 一般 HTTP 請求（讀寫記憶卡 /APP/ 的檔案），一樣排進相機的請求隊伍 ---------- */
+function httpReq(url, init, ms) {
+  return schedule(async () => {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms || 15000);
+    try { const r = await fetch(url, Object.assign({ cache: "no-store", signal: ac.signal }, init)); return { status: r.status, text: await r.text() }; }
+    catch (e) { throw new Error(e.name === "AbortError" ? "逾時" : "連不到相機"); }
+    finally { clearTimeout(t); }
+  }, "hi");
+}
+
+/* =====================================================================
+   分頁
+   ===================================================================== */
+const TABS = ["film", "gallery", "settings"];
+function route() {
+  const tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "film";
+  TABS.forEach(t => $("#page-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
+  if (tab === "gallery" && !gal.loaded) loadGallery();
+  if (tab === "settings" && !$("#set-info").children.length) loadInfo();
+  if (tab === "film") { renderLibrary(); if (camReadAt && Date.now() - camReadAt > 5000) readCamera(); }   // 回到底片頁時重新讀相機
+}
+window.addEventListener("hashchange", route);
+
+if (/[?&]dev\b/.test(location.search)) $("#set-dev").hidden = false;   // 開發者工具：app.html?dev
+renderSlots(); renderApo(undefined); renderLimit(); renderTheme(); renderStatus();
+route();
+cmd(3016, "", { timeout: 5000 }).catch(() => {});
+readCamera();
+syncClock().catch(() => {});   // 每次打開都把相機時間對齊手機
+syncLib(); devDoc.sync();
+refreshRoll(); setInterval(() => { if (!document.hidden && !queue.hi.length && !conn.running) refreshRoll(); }, 60000);
+useSample(sampleId);
+</script>
+</body>
+</html>
