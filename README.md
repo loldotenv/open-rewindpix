@@ -32,7 +32,6 @@
 ```
 app/       放到記憶卡根目錄的 App（app.html、APP/ 裡的圖示與樣本照片）
 saver/     「存到照片」的 https 小頁面，由 GitHub Pages 提供
-scripts/   產生 App 圖示的腳本（make-icon.py，需要 Pillow）
 ```
 
 ## 授權
