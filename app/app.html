@@ -148,7 +148,12 @@ input[type="range"]:disabled { opacity: .4; }
 .cmpbtn { position: absolute; right: 24px; bottom: 22px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .cmpbtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .cmpbtn svg .fill { fill: currentColor; stroke: none; }
-.stage .ld { top: auto; bottom: 22px; animation: blink .9s infinite alternate; }
+/* 照片的框一開始就是原圖比例：先放模糊的小預覽＋轉圈，原圖到了直接換上，大小不變 */
+.frame { --ar: 1.497; position: relative; aspect-ratio: var(--ar); width: min(100%, calc(45vh * var(--ar))); overflow: hidden; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 6px 24px rgba(0,0,0,.5); background: #111; }
+.frame canvas { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; border-radius: 0; box-shadow: none; transition: filter .25s ease; }
+.stage.loading .frame canvas { filter: blur(8px) brightness(.85); }
+.spin { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 2.5px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .stage small { position: absolute; left: 24px; top: 22px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 6px; }
 .modebar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--sunk); padding: 4px; border-radius: 10px; }
 .modebar button { border: 0; background: transparent; color: var(--muted); padding: 7px; border-radius: 7px; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -324,9 +329,9 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <!-- 照片（沖洗） -->
 <div class="sheet editor" id="viewer" role="dialog" aria-modal="true" aria-label="照片">
-  <header><button class="btn small" id="v-close" type="button">關閉</button><b id="v-title"></b><button class="btn small" id="v-revert" type="button" hidden>還原</button><button class="ibtn" id="v-delete" type="button" aria-label="刪除照片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg></button><button class="ibtn accent" id="v-share" type="button" aria-label="存到照片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M7 11H5.5v9.5h13V11H17"/></svg></button></header>
+  <header><button class="btn small" id="v-close" type="button">關閉</button><b id="v-title"></b><button class="btn small" id="v-revert" type="button" hidden>還原</button><button class="ibtn" id="v-delete" type="button" aria-label="刪除照片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg></button><button class="ibtn accent" id="v-share" type="button" aria-label="儲存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M7 11H5.5v9.5h13V11H17"/></svg></button></header>
   <div class="body">
-    <div class="stage" id="v-cmp"><canvas id="v-canvas"></canvas><small id="v-tag"></small><small class="ld" id="v-ld" hidden>載入原圖…</small><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
+    <div class="stage" id="v-cmp"><div class="frame" id="v-frame"><canvas id="v-canvas"></canvas></div><small id="v-tag"></small><i class="spin" id="v-ld" hidden></i><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
     <p class="msg" id="v-msg"></p>
     <div class="modebar" id="v-modes" role="group" aria-label="編輯">
       <button type="button" data-mode="film"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/></svg>底片</button>
@@ -340,8 +345,8 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <div class="asheet" id="v-export" hidden>
   <div class="asheet-panel">
-    <button id="v-save-dev" type="button">存到照片<small>套用底片與調整</small></button>
-    <button id="v-save-orig" type="button">原檔存到照片<small>相機拍出的原始照片</small></button>
+    <button id="v-save-dev" type="button">儲存沖洗照片<small>套用底片與調整</small></button>
+    <button id="v-save-orig" type="button">儲存原始照片<small>相機拍出的原始檔</small></button>
   </div>
   <button class="asheet-cancel" id="v-export-cancel" type="button">取消</button>
 </div>
@@ -374,7 +379,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <script>
 "use strict";
-const APP_VERSION = "2026.10.21b";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
+const APP_VERSION = "2026.10.21c";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
 const $ = (s, el = document) => el.querySelector(s);
 const store = {
   get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -1218,14 +1223,18 @@ function openViewer(f) {
   const c = choiceOf(f);
   Object.assign(view, { f, src: null, lo: null, hi: null, film: c.film, pin: c.pin, k: c.k, adj: c.adj });
   const tm = /^\d{4}\/(\d\d)\/(\d\d) (\d\d:\d\d)/.exec(f.time || "");
-  $("#v-title").textContent = tm ? +tm[1] + "/" + +tm[2] + " " + tm[3] : dateOf(f.name); say($("#v-msg"), ""); $("#v-ld").hidden = false;
+  $("#v-title").textContent = tm ? +tm[1] + "/" + +tm[2] + " " + tm[3] : dateOf(f.name); say($("#v-msg"), "");
+  $("#v-ld").hidden = false; $("#v-cmp").classList.add("loading");
+  $("#v-frame").style.setProperty("--ar", store.get("aspect", 4000 / 2672));   // 用上一張原圖的比例，相機拍的照片比例都一樣
   const cv = $("#v-canvas"); cv.width = 1000; cv.height = 668; closeExport();   // 相機照片是 4000×2672
   if (gal.thumbs.has(toUrl(f.path))) thumbOf(toUrl(f.path)).then(im => { if (view.f === f && !view.src) develop(cv, im, lookOf(c.film, c.adj), c.k, 1000); }).catch(() => {});   // 大圖載好前先顯示套好底片的縮圖
   renderTag(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderRevert(); setMode(vMode);
   const url = toUrl(f.path);
   getBlob(url, { pri: "hi", timeout: 60000 })
-    .then(decode).then(img => { if (view.f !== f) return; view.src = img; view.hi = scaled(img, 1600); view.lo = scaled(img, 700); samplePhoto = img; vDraw(); drawThumbs(); $("#v-ld").hidden = true; })
-    .catch(e => { if (view.f !== f) return; $("#v-ld").hidden = true; say($("#v-msg"), "原圖載入失敗：" + e.message, "bad"); });
+    .then(decode).then(img => { if (view.f !== f) return; view.src = img; view.hi = scaled(img, 1600); view.lo = scaled(img, 700); samplePhoto = img;
+      const ar = img.width / img.height; $("#v-frame").style.setProperty("--ar", ar); store.set("aspect", ar);
+      vDraw(); drawThumbs(); $("#v-ld").hidden = true; $("#v-cmp").classList.remove("loading"); })
+    .catch(e => { if (view.f !== f) return; $("#v-ld").hidden = true; $("#v-cmp").classList.remove("loading"); say($("#v-msg"), "原圖載入失敗：" + e.message, "bad"); });
   $("#viewer").classList.add("on");
 }
 const cmp = $("#v-cmp");
