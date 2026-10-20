@@ -216,7 +216,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
   <!-- ==================== 相簿 ==================== -->
   <section class="page" id="page-gallery">
-    <div class="row"><h1 class="grow">相簿</h1><button class="btn small" id="gal-select" type="button">選取</button><button class="btn small" id="gal-refresh" type="button">重新整理</button><button class="btn small primary" id="gal-out" type="button">全部拿出</button></div>
+    <div class="row"><h1 class="grow">相簿</h1><button class="btn small" id="gal-select" type="button">選取</button><button class="btn small primary" id="gal-out" type="button">全部拿出</button></div>
     <p class="hint" id="gal-info"></p>
     <p class="msg" id="gal-msg"></p>
     <div class="grid" id="gal-grid"></div>
@@ -477,7 +477,9 @@ async function refreshRoll() {   // 讀張數上限與 ._FILM 檔案數
   try {
     const m = statusMap(await cmd(3014, "", { timeout: 15000, pri: "lo" }));
     if (m["8004"] != null) store.set("limit", m["8004"]);
-    roll.shot = (await listPhotos()).filter(f => f.path.includes(FILMQ)).length;
+    const n = (await listPhotos()).filter(f => f.path.includes(FILMQ)).length;
+    if (gal.loaded && roll.shot != null && n !== roll.shot) loadGallery();   // 張數變了：相機上拍了或刪了照片
+    roll.shot = n;
   } catch (e) {}
   renderStatus();
 }
@@ -707,7 +709,6 @@ async function useSample(id) {
   renderSampleChips();
   if (id !== "photo") { const img = await loadSample(id); if (sampleId !== id) return; sampleSrc = img; }
   if ($("#fe").classList.contains("on")) feDraw();
-  renderSlots(); renderLibrary();
 }
 function renderSampleChips() {
   const box = $("#fe-samples"); box.innerHTML = "";
@@ -724,8 +725,9 @@ function testPattern() {   // 樣本照片載不到時的備案：膚色、天�
   for (let i = 0; i < 16; i++) { const v = Math.round(i * 17); x.fillStyle = "rgb(" + v + "," + v + "," + v + ")"; x.fillRect(i * 30, 240, 30, 80); }
   return c;
 }
+let swatchImg = null;   // 底片縮圖固定用街景：暖色燈光、冷色天空、陰影都有，看得出色溫、對比和飽和度的差別
 function swatch(canvas, film) {
-  develop(canvas, currentSample(), film.look, 100, 200);
+  develop(canvas, swatchImg || testPattern(), film.look, 100, 200);
 }
 function filmTile(f, onclick, badge, pressed) {   // 底片格子：樣本照片＋名稱，右上角標出裝在哪一格
   const b = document.createElement("button"); b.type = "button"; b.className = "ftile"; b.title = f.label || f.name;
@@ -976,7 +978,7 @@ function choiceOf(f) {
   return { film: pinned || film, pin: pinned ? c.fv : null, k: c ? c.k : 100, adj: c && c.adj ? Object.assign({}, c.adj) : {}, shot, changed: !!c };
 }
 async function loadGallery() {
-  $("#gal-info").textContent = "載入中…";
+  if (!gal.loaded) $("#gal-info").textContent = "載入中…";
   try {
     const all = await listPhotos();
     const orig = all.filter(f => f.path.includes(ORIG)).sort((a, b) => seqOf(a.name) - seqOf(b.name));
@@ -1025,7 +1027,6 @@ function renderGrid() {
   });
   renderSelBar();
 }
-$("#gal-refresh").onclick = loadGallery;
 
 /* ---------- 選取與刪除 ---------- */
 function renderSelBar() {
@@ -1421,7 +1422,7 @@ function route() {
   const tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "film";
   TABS.forEach(t => $("#page-" + t).classList.toggle("on", t === tab));
   document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
-  if (tab === "gallery" && !gal.loaded) loadGallery();
+  if (tab === "gallery") loadGallery();   // 每次切到相簿都重新讀清單，縮圖沿用
   if (tab === "settings" && !$("#set-info").children.length) loadInfo();
   if (tab === "film") { renderLibrary(); if (camReadAt && Date.now() - camReadAt > 5000) readCamera(); }   // 回到底片頁時重新讀相機
 }
@@ -1436,6 +1437,7 @@ syncClock().catch(() => {});   // 每次打開都把相機時間對齊手機
 libDoc.sync(); devDoc.sync();
 refreshRoll(); setInterval(() => { if (!document.hidden && !queue.hi.length && !conn.running) refreshRoll(); }, 60000);
 useSample(sampleId);
+loadSample("street").then(img => { if (img) { swatchImg = img; renderSlots(); renderLibrary(); } });
 </script>
 </body>
 </html>
