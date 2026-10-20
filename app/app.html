@@ -328,6 +328,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
       <div class="bar" id="out-barbox"><i id="out-bar"></i></div>
       <p class="hint" id="out-info"></p>
       <button class="btn primary" id="out-save" type="button" hidden>存到照片</button>
+      <button class="btn primary" id="out-go" type="button" hidden>前往「存到照片」頁面</button>
     </div>
     <ol class="steps">
       <li>App 先把每張照片照它的底片沖洗好</li>
@@ -1253,7 +1254,7 @@ async function openOut() {
   const run = ++out.run, list = gal.orig.slice();
   Object.assign(out, { files: [], fails: [], saved: false });
   $("#out-title").textContent = "全部拿出 · " + list.length + " 張";
-  $("#out-save").hidden = true; $("#out-save").className = "btn primary"; $("#out-clearcard").hidden = true; say($("#out-msg"), "");
+  $("#out-save").hidden = true; $("#out-go").hidden = true; $("#out-save").className = "btn primary"; $("#out-clearcard").hidden = true; say($("#out-msg"), "");
   $("#out").classList.add("on");
   for (const [i, f] of list.entries()) {
     outShow("沖洗中 " + (i + 1) + " / " + list.length, "請保持這個畫面開著", i / list.length * 100);
@@ -1278,9 +1279,16 @@ $("#out-save").onclick = async () => {
   if (!sv.ok) { outShow("無法打開「存到照片」頁面", "Safari 擋掉了新視窗，請在 設定 → Safari 關閉「阻擋彈出式視窗」後再試。"); return; }
   sv.onSaved(n => {
     out.saved = true; outShow("已存到照片", n + " 張已經送到「照片」App。確認都在了，就可以從相機清除。"); renderOutClear();
+    $("#out-go").hidden = true; $("#out-save").hidden = false;
     $("#out-save").className = "btn"; $("#out-save").textContent = "再存一次";   // 下一步是清除，主要按鈕讓給它
   });
-  try { await sv.send(out.files.map(x => ({ name: x.name, blob: x.blob }))); outShow("請到新頁面存照片", "在新頁面按「存到照片」，再選「儲存影像」。完成後回到這裡。"); }
+  try {
+    await sv.send(out.files.map(x => ({ name: x.name, blob: x.blob })));
+    outShow("照片已送到「存到照片」頁面", navigator.standalone
+      ? "那個頁面開在 Safari 裡。按下面的按鈕前往，或自己打開 Safari 找到它；在那一頁按「存到照片」，再選「儲存影像」，然後回到這裡。"
+      : "按下面的按鈕前往，或從 Safari 右下角的分頁按鈕切過去；在那一頁按「存到照片」，再選「儲存影像」，然後回到這裡。");
+    $("#out-save").hidden = true; $("#out-go").hidden = false; $("#out-go").onclick = () => sv.focus();
+  }
   catch (e) { outShow("無法交給「存到照片」頁面", e.message + "。請先在有網路時打開過一次 " + SAVER_URL); }
 };
 $("#gal-out").onclick = openOut;
@@ -1378,7 +1386,8 @@ function openSaver() {   // 一定要在點擊當下同步呼叫，不然 iOS �
       if (!ready) await new Promise((res, rej) => { wake = res; setTimeout(() => rej(new Error("存檔頁沒有回應")), ms || 20000); });
       w.postMessage({ type: "ps135-photos", files: items }, SAVER_ORIGIN);
     },
-    onSaved(fn) { saved = fn; }
+    onSaved(fn) { saved = fn; },
+    focus() { if (w && !w.closed) w.focus(); return !!w && !w.closed; }
   };
 }
 
