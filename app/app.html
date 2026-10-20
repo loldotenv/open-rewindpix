@@ -46,11 +46,7 @@ output, .st { font-variant-numeric: tabular-nums; }
 .tile.ready canvas { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
 
-/* ---------- 連線狀態與這卷剩幾張：右上角；斷線時上方出現提示 ---------- */
-.banner { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
-  background: var(--bad); color: #fff; font-size: 13px; font-weight: 600; }
-.banner span { flex: 1; }
-.banner button { border: 0; background: rgba(255,255,255,.22); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
+/* ---------- 連線狀態與這卷剩幾張：右上角的標籤；斷線時變紅，點一下重試，下方短暫顯示原因 ---------- */
 .st { position: absolute; right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 6px;
   border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; }
 .st .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
@@ -59,6 +55,10 @@ output, .st { font-variant-numeric: tabular-nums; }
 .st[data-state="down"] .dot { background: var(--bad); }
 .st[data-busy] .dot { animation: blink .8s infinite alternate; }
 .st.full { color: var(--bad); border-color: var(--bad); }
+.st[data-state="down"] { background: var(--bad); border-color: var(--bad); color: #fff; }
+.st[data-state="down"] .dot { background: #fff; }
+.st-hint { position: absolute; right: 16px; top: calc(56px + env(safe-area-inset-top, 0px)); z-index: 21; max-width: 250px; margin: 0; padding: 8px 11px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.18); font-size: 13px; animation: fade-in .15s ease; }
 @keyframes blink { to { opacity: .25; } }
 
 /* ---------- 版面 ---------- */
@@ -229,10 +229,10 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 </head>
 <body>
 
-<div class="banner" id="banner" role="alert" hidden><span id="bn-text"></span><button id="st-retry" type="button">重試</button></div>
 
 <main>
   <button class="st" id="status" type="button" data-state="wait" aria-live="polite"><i class="dot" aria-hidden="true"></i><span id="st-text">連線中</span></button>
+  <p class="st-hint" id="st-hint" role="alert" hidden></p>
   <!-- ==================== 底片 ==================== -->
   <section class="page" id="page-film">
     <h1>底片</h1>
@@ -378,7 +378,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <script>
 "use strict";
-const APP_VERSION = "2026.10.21d";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
+const APP_VERSION = "2026.10.21e";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
 const $ = (s, el = document) => el.querySelector(s);
 const store = {
   get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -493,7 +493,7 @@ function renderStatus() {
   let state, title, warn = "";
   if (!conn.lastOk && !conn.fails) { state = "wait"; title = "連線中"; }
   else if (conn.fails >= 2 || (conn.lastOk && now - conn.lastOk > 30000 && !conn.running)) {
-    state = "down"; title = "未連線";
+    state = "down"; title = "未連線 · 重試";
     warn = conn.lastErr === "逾時" ? "相機可能已待機，按一下相機按鍵喚醒" : "連不到相機，請確認手機已連上相機的 Wi-Fi";
   } else if (conn.fails === 1) { state = "slow"; title = "不穩"; }
   else { state = "ok"; title = "已連線"; }
@@ -501,8 +501,13 @@ function renderStatus() {
   if (state === "ok" && roll.shot != null) title = full ? "底片已滿" : limit ? "剩 " + (limit - roll.shot) + " 張" : "已拍 " + roll.shot + " 張";
   el.dataset.state = state; $("#st-text").textContent = title; el.classList.toggle("full", !!full);
   if (queue.hi.length + queue.lo.length + (conn.running ? 1 : 0)) el.dataset.busy = ""; else delete el.dataset.busy;
-  $("#banner").hidden = state !== "down"; $("#bn-text").textContent = warn;
+  conn.warn = warn;
+  if (state === "down" && conn.shown !== "down") showHint(warn);   // 剛斷線時自動提示一次
+  if (state !== "down") $("#st-hint").hidden = true;
+  conn.shown = state;
 }
+let hintTimer = 0;
+function showHint(text) { const h = $("#st-hint"); h.textContent = text; h.hidden = false; clearTimeout(hintTimer); hintTimer = setTimeout(() => { h.hidden = true; }, 5000); }
 async function refreshRoll() {   // 讀張數上限與 ._FILM 檔案數
   try {
     const m = statusMap(await cmd(3014, "", { timeout: 15000, pri: "lo" }));
@@ -516,8 +521,10 @@ async function refreshRoll() {   // 讀張數上限與 ._FILM 檔案數
 setInterval(renderStatus, 1000);
 function heartbeat() { if (!conn.running && !queue.hi.length && !queue.lo.length) cmd(3016, "", { timeout: 5000 }).catch(() => {}); }
 setInterval(heartbeat, 10000);
-$("#st-retry").onclick = () => { conn.fails = 0; renderStatus(); cmd(3016, "", { timeout: 5000 }).catch(() => {}); };
-$("#status").onclick = () => { conn.fails = 0; refreshRoll(); };
+$("#status").onclick = () => {   // 斷線時：顯示原因並重試；連線時：重新讀張數
+  if ($("#status").dataset.state === "down") showHint(conn.warn);
+  cmd(3016, "", { timeout: 5000 }).then(refreshRoll, () => {});   // 連上了 markOk 會自己把狀態轉回來
+};
 
 /* =====================================================================
    機內調色：介面 -100～+100（0 = 中性），依實測範圍換算成相機值。
