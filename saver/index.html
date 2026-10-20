@@ -60,7 +60,7 @@ window.addEventListener("message", ev => {
   diag("canShare(files): " + ok);
   if (!files.length) return say("沒有收到照片", "bad");
   if (!ok) return say("這個瀏覽器不能用分享選單存照片", "bad");
-  say("收到 " + files.length + " 張照片。按下面的按鈕，再選「儲存影像」。");
+  say("收到 " + files.length + " 張照片。按「存到照片」，再選「儲存影像」。");
   $("#save").disabled = false;
 });
 if (window.opener) { window.opener.postMessage({ type: "ps135-saver-ready" }, APP_ORIGIN); diag("已通知 App"); }
@@ -69,7 +69,7 @@ else say("請從 PS135 App 打開這一頁。");
 $("#save").onclick = async () => {
   try {
     await navigator.share({ files });
-    say("完成", "ok"); diag("share 完成");
+    say("完成。回到 PS135 App，確認照片都在「照片」App 裡之後，就可以從相機清除。", "ok"); diag("share 完成");
     if (window.opener) window.opener.postMessage({ type: "ps135-saved", n: files.length }, APP_ORIGIN);
   } catch (e) {
     diag("share 失敗：" + e.name + " " + e.message);

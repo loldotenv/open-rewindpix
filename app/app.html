@@ -35,24 +35,23 @@ body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--sans); -web
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 
-/* ---------- 連線狀態：footer 最右邊；斷線時上方出現提示 ---------- */
+/* ---------- 連線狀態與這卷剩幾張：右上角；斷線時上方出現提示 ---------- */
 .banner { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
   background: var(--bad); color: #fff; font-size: 13px; font-weight: 600; }
 .banner span { flex: 1; }
 .banner button { border: 0; background: rgba(255,255,255,.22); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
-nav.tabs .st { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: var(--tab-h); color: var(--fg); }
-nav.tabs .st b { font: 700 17px var(--mono); letter-spacing: .02em; }
-nav.tabs .st small { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); font-weight: 600; }
-nav.tabs .st .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-nav.tabs .st[data-state="ok"] .dot { background: var(--ok); }
-nav.tabs .st[data-state="slow"] .dot { background: var(--warn); }
-nav.tabs .st[data-state="down"] .dot { background: var(--bad); }
-nav.tabs .st[data-busy] .dot { animation: blink .8s infinite alternate; }
-nav.tabs .st.full b { color: var(--bad); }
+.st { position: absolute; right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; }
+.st .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.st[data-state="ok"] .dot { background: var(--ok); }
+.st[data-state="slow"] .dot { background: var(--warn); }
+.st[data-state="down"] .dot { background: var(--bad); }
+.st[data-busy] .dot { animation: blink .8s infinite alternate; }
+.st.full { color: var(--bad); border-color: var(--bad); }
 @keyframes blink { to { opacity: .25; } }
 
 /* ---------- 版面 ---------- */
-main { max-width: 620px; margin: 0 auto; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom, 0px)); }
+main { position: relative; max-width: 620px; margin: 0 auto; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom, 0px)); }
 section.page { display: none; flex-direction: column; gap: 12px; }
 section.page.on { display: flex; }
 h1 { font-size: 22px; margin: 2px 0 0; }
@@ -93,12 +92,11 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; 
 .ftile { position: relative; border: 0; background: none; padding: 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--fg); text-align: left; }
 .ftile canvas, .ftile .plus { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border-radius: 9px; background: var(--sunk); box-sizing: border-box; }
 .ftile .plus { display: grid; place-items: center; font-size: 28px; font-weight: 300; color: var(--muted); border: 1.5px dashed var(--line); background: none; }
-.orow { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; }
-.orow + .orow { border-top: 1px solid var(--line); padding-top: 10px; }
-.orow img { width: 48px; height: 36px; object-fit: cover; border-radius: 6px; background: var(--sunk); display: block; }
-.orow b { display: block; font: 700 13px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.orow span { font-size: 12px; color: var(--muted); }
-.orow .done { color: var(--ok); font-size: 13px; font-weight: 600; }
+.bar { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.steps { margin: 0; padding-left: 20px; font-size: 14px; color: var(--muted); }
+.steps li + li { margin-top: 4px; }
+.steps b { color: var(--fg); }
 .ftile b { font: 700 11px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ftile em { position: absolute; right: 5px; top: 5px; font: 700 10px var(--mono); font-style: normal; background: var(--accent); color: var(--accent-ink); padding: 1px 5px; border-radius: 5px; }
 .ftile[aria-pressed="true"] canvas { outline: 2.5px solid var(--accent); outline-offset: 2px; }
@@ -133,6 +131,7 @@ input[type="range"]:disabled { opacity: .4; }
 .stage { position: relative; margin: 0 -16px; background: #000; display: flex; justify-content: center; align-items: center; min-height: 200px;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .stage:first-child { margin-top: -14px; }
+.sheet.editor .stage { position: sticky; top: -14px; z-index: 3; }   /* 往下捲去調其他拉桿時，照片固定在上方 */
 .stage canvas { display: block; max-width: 100%; max-height: 45vh; width: auto; height: auto; }
 .cmpbtn { position: absolute; right: 10px; bottom: 10px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .cmpbtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
@@ -149,6 +148,7 @@ input[type="range"]:disabled { opacity: .4; }
 .preset span { max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preset[aria-pressed="true"] { color: var(--fg); }
 .preset[aria-pressed="true"] canvas { border-color: var(--accent); }
+.preset.shot span::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-right: 3px; vertical-align: middle; }   /* 拍攝時用的底片 */
 .menu { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .menu button { border: 0; background: none; padding: 12px 14px; text-align: left; font-size: 15px; }
 .menu button + button { border-top: 1px solid var(--line); }
@@ -157,12 +157,12 @@ input[type="range"]:disabled { opacity: .4; }
 /* ---------- 相簿 ---------- */
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .tile { position: relative; aspect-ratio: 1; background: var(--sunk); border: 0; padding: 0; border-radius: 6px; overflow: hidden; }
-.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tile span { position: absolute; left: 4px; bottom: 3px; right: 4px; font: 700 10px var(--mono); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.9); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .check { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.25); display: none; }
 body.selecting .tile .check { display: block; }
 .tile[aria-pressed="true"] .check { background: var(--accent); }
-.tile[aria-pressed="true"] img { opacity: .7; }
+.tile[aria-pressed="true"] canvas { opacity: .7; }
 .selbar { position: fixed; left: 0; right: 0; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); z-index: 25; background: var(--panel); border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
 body.selecting main { padding-bottom: calc(var(--tab-h) + 130px + env(safe-area-inset-bottom, 0px)); }
 .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 14px; }
@@ -177,7 +177,7 @@ body.selecting main { padding-bottom: calc(var(--tab-h) + 130px + env(safe-area-
 .sheet img.big { width: 100%; height: auto; border-radius: 10px; background: var(--sunk); display: block; }
 
 /* ---------- 分頁列 ---------- */
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr);
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(3, 1fr);
   background: var(--panel); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
 nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: var(--tab-h); color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 600; }
 nav.tabs a svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -198,6 +198,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 <div class="banner" id="banner" role="alert" hidden><span id="bn-text"></span><button id="st-retry" type="button">重試</button></div>
 
 <main>
+  <button class="st" id="status" type="button" data-state="wait" aria-live="polite"><i class="dot" aria-hidden="true"></i><span id="st-text">連線中</span></button>
   <!-- ==================== 底片 ==================== -->
   <section class="page" id="page-film">
     <h1>底片</h1>
@@ -216,8 +217,8 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
   <!-- ==================== 相簿 ==================== -->
   <section class="page" id="page-gallery">
-    <div class="row"><h1 class="grow">相簿</h1><button class="btn small" id="gal-select" type="button">選取</button><button class="btn small primary" id="gal-out" type="button">全部拿出</button></div>
-    <p class="hint" id="gal-info"></p>
+    <h1>相簿</h1>
+    <div class="row"><p class="hint grow" id="gal-info"></p><button class="btn small" id="gal-select" type="button">選取</button><button class="btn small primary" id="gal-out" type="button">全部拿出</button></div>
     <p class="msg" id="gal-msg"></p>
     <div class="grid" id="gal-grid"></div>
     <div class="card" id="gal-tidy" hidden></div>
@@ -248,8 +249,6 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     <div class="card" id="set-dev" hidden>
       <h2>開發者</h2>
       <details><summary>通訊紀錄</summary><pre class="log" id="set-log" style="margin-top:8px"></pre></details>
-      <button class="btn" id="dev-saver" type="button">存到照片測試（沖洗最新一張）</button>
-      <p class="msg" id="dev-saver-msg"></p>
     </div>
     <p class="msg" id="set-msg"></p>
   </section>
@@ -264,7 +263,6 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
   <a href="#film" data-tab="film"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>底片</a>
   <a href="#gallery" data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>相簿</a>
   <a href="#settings" data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>設定</a>
-  <button class="st" id="status" type="button" data-state="wait" aria-live="polite"><b id="st-roll">—</b><small><i class="dot" aria-hidden="true"></i><span id="st-title">連線中</span></small></button>
 </nav>
 
 <!-- 選底片 -->
@@ -277,8 +275,8 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 <div class="sheet editor" id="fe" role="dialog" aria-modal="true" aria-label="底片">
   <header><button class="btn small" id="fe-close" type="button">關閉</button><b id="fe-title">底片</b><button class="btn small primary" id="fe-save" type="button">儲存</button></header>
   <div class="body">
-    <p class="msg warn" id="fe-ro" hidden>內建底片無法編輯，可以複製一份再修改。</p>
     <div class="stage" id="fe-cmp"><canvas id="fe-canvas"></canvas><small id="fe-tag" hidden>原圖</small><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
+    <p class="msg warn" id="fe-ro" hidden>內建底片無法編輯，可以複製一份再修改。</p>
     <div class="chips" id="fe-samples" role="group" aria-label="預覽照片"></div>
     <div class="card">
       <label class="field">名稱<input type="text" id="fe-name" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="英文或數字，最多 10 字"></label>
@@ -304,7 +302,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 <div class="sheet editor" id="viewer" role="dialog" aria-modal="true" aria-label="照片">
   <header><button class="btn small" id="v-close" type="button">關閉</button><b id="v-title"></b><button class="btn small" id="v-more" type="button" aria-label="更多" aria-expanded="false">⋯</button><button class="btn small primary" id="v-develop" type="button">儲存</button></header>
   <div class="body">
-    <div class="stage" id="v-cmp"><canvas id="v-canvas"></canvas><small id="v-tag" hidden>原圖</small><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
+    <div class="stage" id="v-cmp"><canvas id="v-canvas"></canvas><small id="v-tag"></small><button class="cmpbtn" type="button" aria-label="按住對照原圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M12 2.5v19"/><path d="M12 4h6.5A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5H12z" class="fill"/></svg></button></div>
     <div class="menu" id="v-menu" hidden>
       <button id="v-download" type="button">下載原檔</button>
       <button id="v-reset" type="button">還原所有調整</button>
@@ -318,18 +316,27 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     <div id="v-film-panel"><div class="presets" id="v-films"></div><div id="v-strength"></div></div>
     <div id="v-adjust-panel" hidden></div>
     <div class="row" id="v-savefilm" hidden><button class="btn small" id="v-asnew" type="button">存成新底片</button><button class="btn small" id="v-overwrite" type="button"></button></div>
-    <p class="hint" id="v-meta"></p>
   </div>
 </div>
 
 <!-- 沖洗結果 -->
-<div class="sheet" id="out" role="dialog" aria-modal="true" aria-label="拿出照片">
-  <header><button class="btn small" id="out-close" type="button">關閉</button><b id="out-title">拿出照片</b></header>
+<div class="sheet" id="out" role="dialog" aria-modal="true" aria-label="全部拿出">
+  <header><button class="btn small" id="out-close" type="button">關閉</button><b id="out-title">全部拿出</b></header>
   <div class="body">
-    <p class="hint" id="out-info"></p>
-    <div class="card" id="out-list"></div>
     <div class="card">
-      <p class="hint">照片都存好後，再從相機清除。隱藏的 ._FILM 備份也會一起清掉。</p>
+      <h2 id="out-step"></h2>
+      <div class="bar" id="out-barbox"><i id="out-bar"></i></div>
+      <p class="hint" id="out-info"></p>
+      <button class="btn primary" id="out-save" type="button" hidden>存到照片</button>
+    </div>
+    <ol class="steps">
+      <li>App 先把每張照片照它的底片沖洗好</li>
+      <li>按 <b>存到照片</b>，會打開一個新頁面</li>
+      <li>在新頁面按 <b>存到照片</b>，再選 <b>儲存影像</b></li>
+      <li>回到這裡，確認「照片」App 裡都有了，再從相機清除</li>
+    </ol>
+    <div class="card" id="out-clearcard" hidden>
+      <p class="hint">清除後，相機裡這些照片和隱藏的 ._FILM 備份都會刪掉，這卷底片重新開始計算張數。</p>
       <button class="btn danger" id="out-clear" type="button">從相機清除</button>
       <p class="msg" id="out-msg"></p>
     </div>
@@ -465,11 +472,9 @@ function renderStatus() {
     warn = conn.lastErr === "逾時" ? "相機可能已待機，按一下相機按鍵喚醒" : "連不到相機，請確認手機已連上相機的 Wi-Fi";
   } else if (conn.fails === 1) { state = "slow"; title = "不穩"; }
   else { state = "ok"; title = "已連線"; }
-  el.dataset.state = state; $("#st-title").textContent = title;
-  const limit = store.get("limit", null), full = roll.shot != null && limit && roll.shot >= limit;
-  $("#st-roll").textContent = roll.shot == null ? "—" : full ? "已滿" : roll.shot + (limit ? "/" + limit : "");
-  el.classList.toggle("full", !!full);
-  el.setAttribute("aria-label", title + (roll.shot != null ? "，這卷已拍 " + roll.shot + (limit ? " 張，共 " + limit + " 張" : " 張") : ""));
+  const limit = store.get("limit", null), full = state === "ok" && roll.shot != null && limit && roll.shot >= limit;
+  if (state === "ok" && roll.shot != null) title = full ? "底片已滿" : limit ? "剩 " + (limit - roll.shot) + " 張" : "已拍 " + roll.shot + " 張";
+  el.dataset.state = state; $("#st-text").textContent = title; el.classList.toggle("full", !!full);
   if (queue.hi.length + queue.lo.length + (conn.running ? 1 : 0)) el.dataset.busy = ""; else delete el.dataset.busy;
   $("#banner").hidden = state !== "down"; $("#bn-text").textContent = warn;
 }
@@ -997,13 +1002,14 @@ async function loadGallery() {
 const thumbObserver = "IntersectionObserver" in window ? new IntersectionObserver(entries => {
   entries.forEach(en => { if (en.isIntersecting) { thumbObserver.unobserve(en.target); loadThumb(en.target); } });
 }, { rootMargin: "200px" }) : null;
-async function loadThumb(tile) {
-  const url = tile.dataset.url, img = tile.querySelector("img");
-  if (gal.thumbs.has(url)) { img.src = gal.thumbs.get(url); return; }
-  try {
-    const b = await getBlob(previewUrl(url), { pri: "lo", timeout: 20000 }).catch(() => getBlob(thumbUrl(url), { pri: "lo", timeout: 15000 }));
-    const o = URL.createObjectURL(b); gal.thumbs.set(url, o); img.src = o;
-  } catch (e) { img.alt = "沒有縮圖"; }
+function thumbOf(url) {   // 相機的預覽圖（解碼後快取），失敗就退回小縮圖
+  if (!gal.thumbs.has(url)) gal.thumbs.set(url, getBlob(previewUrl(url), { pri: "lo", timeout: 20000 }).catch(() => getBlob(thumbUrl(url), { pri: "lo", timeout: 15000 }))
+    .then(decode).catch(e => { gal.thumbs.delete(url); throw e; }));
+  return gal.thumbs.get(url);
+}
+async function loadThumb(tile) {   // 縮圖也套上這張照片的底片與調整
+  try { const img = await thumbOf(tile.dataset.url), c = choiceOf(tile.photo); develop(tile.querySelector("canvas"), img, lookOf(c.film, c.adj), c.k, 360); }
+  catch (e) { tile.setAttribute("aria-label", tile.getAttribute("aria-label") + "，沒有縮圖"); }
 }
 function renderGrid() {
   const box = $("#gal-grid"); box.innerHTML = "";
@@ -1011,8 +1017,8 @@ function renderGrid() {
   $("#gal-out").disabled = !gal.orig.length;
   if (gal.loaded && !gal.orig.length) box.innerHTML = '<p class="empty" style="grid-column:1/-1">還沒有照片</p>';
   gal.orig.forEach(f => {
-    const t = document.createElement("button"); t.type = "button"; t.className = "tile"; t.dataset.url = toUrl(f.path);
-    t.innerHTML = '<img alt=""><span></span><i class="check" aria-hidden="true"></i>';
+    const t = document.createElement("button"); t.type = "button"; t.className = "tile"; t.dataset.url = toUrl(f.path); t.photo = f;
+    t.innerHTML = '<canvas></canvas><span></span><i class="check" aria-hidden="true"></i>';
     const c = choiceOf(f);
     t.querySelector("span").textContent = c.changed || findFilm(c.shot) ? c.film.name : c.shot || "";
     t.setAttribute("aria-label", f.name + "，底片 " + c.film.name);
@@ -1090,7 +1096,7 @@ let vTimer = null, vMode = store.get("vmode", "film");
 function vDraw(showOriginal, lo) {
   if (!view.src) return;
   develop($("#v-canvas"), lo ? view.lo : view.hi, showOriginal ? null : lookOf(view.film, view.adj), view.k, 0);
-  $("#v-tag").hidden = !showOriginal;
+  renderTag(showOriginal);
 }
 let vRaf = 0;
 function vDrawSoon() {   // 拖拉桿時每個畫面畫一次 700px 的小圖，停手 250 ms 後再畫 1600px
@@ -1114,9 +1120,10 @@ function renderViewerFilms() {   // 濾鏡縮圖列：每卷底片套在這張�
   view.films.forEach(f => {
     const b = document.createElement("button"); b.type = "button"; b.className = "preset"; b.title = f.label || "";
     b.innerHTML = "<canvas></canvas><span></span>"; b.querySelector("span").textContent = f.name === "STD" ? "原色" : f.name;
+    if (f.name.toUpperCase() === String(filmOfPhoto(view.f.name)).toUpperCase()) b.classList.add("shot");
     b.setAttribute("aria-pressed", String(f === view.film));
     b.onclick = () => {
-      view.film = f; view.pin = null; vSave(); vDraw(); renderMeta(); renderStrength(); renderAdjustPanel();
+      view.film = f; view.pin = null; vSave(); vDraw(); renderTag(); renderStrength(); renderAdjustPanel();
       box.querySelectorAll(".preset").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
     };
     box.appendChild(b);
@@ -1154,7 +1161,7 @@ $("#v-asnew").onclick = () => {
   fe.onSaved = film => {   // 這張改用新底片，調整歸零（已經存進底片裡）
     if (view.f !== f) return;
     view.film = film; view.pin = null; view.adj = {};
-    vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderMeta(); vDraw();
+    vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderTag(); vDraw();
     say($("#v-msg"), "已存成底片 " + film.name, "ok");
   };
 };
@@ -1165,27 +1172,26 @@ $("#v-overwrite").onclick = () => {
   const v = { name: f.name, label: cur.label, look: lookOf(f, view.adj), cam: cur.cam };
   if (!addVersion(v)) { say($("#v-msg"), "手機儲存空間不足", "bad"); return; }
   view.film = v; view.pin = v.t; view.adj = {};
-  vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderMeta(); vDraw(); renderLibrary();
+  vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderTag(); vDraw(); renderLibrary();
   say($("#v-msg"), "已更新 " + f.name + "，之後拍的照片也會用新設定", "ok");
   writeCamFor(v);
 };
 $("#v-more").onclick = () => { const m = $("#v-menu"); m.hidden = !m.hidden; $("#v-more").setAttribute("aria-expanded", String(!m.hidden)); };
 $("#v-reset").onclick = () => {
   view.film = shotOf(view.f); view.pin = null; view.k = 100; view.adj = {};
-  vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderMeta(); vDraw(); $("#v-menu").hidden = true;
+  vSave(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); renderTag(); vDraw(); $("#v-menu").hidden = true;
 };
-function renderMeta() {
-  const f = view.f, shot = filmOfPhoto(f.name);
-  $("#v-meta").textContent = ["拍攝底片 " + (shot || "未知"), f.size ? (f.size / 1048576).toFixed(1) + " MB" : ""].filter(Boolean).join(" · ");
+function renderTag(showOriginal) {   // 照片左上角：目前的底片；改選過的話也標出拍攝時用的底片
+  const shot = filmOfPhoto(view.f.name);
+  $("#v-tag").textContent = showOriginal ? "原圖" : view.film.name + (shot && shot.toUpperCase() !== view.film.name ? " · 拍攝用 " + shot : "");
 }
 function openViewer(f) {
   const c = choiceOf(f);
   Object.assign(view, { f, src: null, lo: null, hi: null, film: c.film, pin: c.pin, k: c.k, adj: c.adj });
   $("#v-title").textContent = f.time || dateOf(f.name); say($("#v-msg"), "載入中…");
-  const cv = $("#v-canvas"); cv.width = 1000; cv.height = 668; $("#v-tag").hidden = true; $("#v-menu").hidden = true;   // 相機照片是 4000×2672
-  const th = gal.thumbs.get(toUrl(f.path));
-  if (th) { const im = new Image(); im.onload = () => { if (view.f !== f || view.src) return; cv.height = Math.round(1000 * im.naturalHeight / im.naturalWidth); cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height); }; im.src = th; }
-  renderMeta(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); setMode(vMode);
+  const cv = $("#v-canvas"); cv.width = 1000; cv.height = 668; $("#v-menu").hidden = true;   // 相機照片是 4000×2672
+  if (gal.thumbs.has(toUrl(f.path))) thumbOf(toUrl(f.path)).then(im => { if (view.f === f && !view.src) develop(cv, im, lookOf(c.film, c.adj), c.k, 1000); }).catch(() => {});   // 大圖載好前先顯示套好底片的縮圖
+  renderTag(); renderViewerFilms(); renderStrength(); renderAdjustPanel(); setMode(vMode);
   const url = toUrl(f.path);
   getBlob(url, { pri: "hi", timeout: 60000 })
     .then(decode).then(img => { if (view.f !== f) return; view.src = img; view.hi = scaled(img, 1600); view.lo = scaled(img, 700); samplePhoto = img; vDraw(); drawThumbs(); say($("#v-msg"), ""); })
@@ -1234,69 +1240,55 @@ async function developPhoto(f, img) {   // 依這張照片的底片、強度與�
 }
 
 /* ---------- 全部拿出 ----------
-   逐張沖洗，好了就出現「存」：iOS 只有在使用者點擊時才允許下載，所以每張都要點一次。
-   最多先沖好 2 張等著存，避免手機記憶體不夠；存完 1 分鐘後釋放。照片都存好後，由使用者確認再從相機清除（含 ._FILM）。 */
-const out = { items: [], busy: false, open: false };
-function openOut() {
+   1. 在這個畫面（保持在前景）把每張照片沖洗成 JPG
+   2. 按「存到照片」打開 https 的轉手頁，一次交過去；在那一頁按按鈕叫出分享選單 →「儲存影像」
+   3. 回到這裡確認後，從相機清除原檔和 ._FILM（這卷底片重新開始） */
+const out = { run: 0, files: [], fails: [], saved: false };
+function outShow(step, info, pct) {
+  $("#out-step").textContent = step; $("#out-info").textContent = info || "";
+  $("#out-barbox").hidden = pct == null; $("#out-bar").style.width = (pct || 0) + "%";
+}
+async function openOut() {
   if (!gal.orig.length) return;
-  out.items = gal.orig.map(f => ({ f, state: "wait", url: null, name: "" }));
-  out.open = true; say($("#out-msg"), ""); $("#out").classList.add("on");
-  renderOut(); pumpOut();
+  const run = ++out.run, list = gal.orig.slice();
+  Object.assign(out, { files: [], fails: [], saved: false });
+  $("#out-title").textContent = "全部拿出 · " + list.length + " 張";
+  $("#out-save").hidden = true; $("#out-save").className = "btn primary"; $("#out-clearcard").hidden = true; say($("#out-msg"), "");
+  $("#out").classList.add("on");
+  for (const [i, f] of list.entries()) {
+    outShow("沖洗中 " + (i + 1) + " / " + list.length, "請保持這個畫面開著", i / list.length * 100);
+    try {
+      const img = await decode(await getBlob(toUrl(f.path), { pri: "hi", timeout: 60000 }));
+      const r = await developPhoto(f, img); if (img.close) img.close();
+      if (run !== out.run) return;   // 中途關掉了
+      out.files.push({ name: r.name, blob: r.blob, path: f.path });
+    } catch (e) { if (run !== out.run) return; out.fails.push(f.name); }
+  }
+  const n = out.files.length, mb = out.files.reduce((t, x) => t + x.blob.size, 0) / 1048576;
+  outShow(n + " 張沖洗好了", (out.fails.length ? out.fails.length + " 張沖洗失敗，不會被清除。" : "") + "共 " + mb.toFixed(0) + " MB。按「存到照片」繼續。");
+  $("#out-save").hidden = !n; $("#out-save").textContent = "存到照片（" + n + " 張）";
+  $("#out-clearcard").hidden = !n; renderOutClear();
 }
-function closeOut() {
-  out.open = false; out.items.forEach(it => { if (it.url) URL.revokeObjectURL(it.url); }); out.items = [];
-  $("#out").classList.remove("on");
+function renderOutClear() {
+  $("#out-clear").textContent = "從相機清除 " + out.files.length + " 張";
+  $("#out-clear").className = "btn " + (out.saved ? "primary" : "danger");
 }
-async function pumpOut() {
-  if (out.busy) return;
-  out.busy = true;
-  try {
-    while (out.open) {
-      const it = out.items.find(x => x.state === "wait");
-      if (!it || out.items.filter(x => x.state === "ready").length >= 2) break;
-      it.state = "work"; renderOut();
-      try {
-        const img = await decode(await getBlob(toUrl(it.f.path), { pri: "hi", timeout: 60000 }));
-        const r = await developPhoto(it.f, img); if (img.close) img.close();
-        it.url = URL.createObjectURL(r.blob); it.name = r.name; it.state = "ready";
-      } catch (e) { it.state = "fail"; }
-      renderOut();
-    }
-  } finally { out.busy = false; }
-}
-function renderOut() {
-  const box = $("#out-list"); box.innerHTML = "";
-  const n = out.items.length, done = out.items.filter(x => x.state === "done").length;
-  $("#out-title").textContent = "拿出照片 · " + n + " 張";
-  $("#out-info").textContent = done === n ? "全部存好了" : "沖好的照片按「存」存到手機。已存 " + done + " / " + n;
-  out.items.forEach(it => {
-    const row = document.createElement("div"); row.className = "orow";
-    row.innerHTML = '<img alt=""><div><b></b><span></span></div><div></div>';
-    const th = gal.thumbs.get(toUrl(it.f.path)); if (th) row.querySelector("img").src = th;
-    row.querySelector("b").textContent = choiceOf(it.f).film.name;
-    row.querySelector("span").textContent = it.f.time || dateOf(it.f.name);
-    const act = row.lastChild;
-    if (it.state === "ready") {
-      const a = document.createElement("a"); a.className = "btn small primary"; a.textContent = "存"; a.href = it.url; a.download = it.name;
-      a.onclick = () => setTimeout(() => {
-        it.state = "done"; renderOut(); pumpOut();
-        setTimeout(() => { if (it.state === "done" && it.url) { URL.revokeObjectURL(it.url); it.url = null; } }, 60000);
-      }, 300);
-      act.appendChild(a);
-    } else if (it.state === "done") {
-      const t = document.createElement("span"); t.className = "done"; t.textContent = "✓ ";
-      act.append(t, button("再存", "btn small", () => { it.state = it.url ? "ready" : "wait"; renderOut(); pumpOut(); }));
-    } else if (it.state === "fail") act.appendChild(button("重試", "btn small", () => { it.state = "wait"; renderOut(); pumpOut(); }));
-    else act.innerHTML = '<span class="hint">' + (it.state === "work" ? "沖洗中…" : "等待") + "</span>";
-    box.appendChild(row);
+$("#out-save").onclick = async () => {
+  const sv = openSaver();   // 一定要在點擊當下打開
+  if (!sv.ok) { outShow("無法打開「存到照片」頁面", "Safari 擋掉了新視窗，請在 設定 → Safari 關閉「阻擋彈出式視窗」後再試。"); return; }
+  sv.onSaved(n => {
+    out.saved = true; outShow("已存到照片", n + " 張已經送到「照片」App。確認都在了，就可以從相機清除。"); renderOutClear();
+    $("#out-save").className = "btn"; $("#out-save").textContent = "再存一次";   // 下一步是清除，主要按鈕讓給它
   });
-}
+  try { await sv.send(out.files.map(x => ({ name: x.name, blob: x.blob }))); outShow("請到新頁面存照片", "在新頁面按「存到照片」，再選「儲存影像」。完成後回到這裡。"); }
+  catch (e) { outShow("無法交給「存到照片」頁面", e.message + "。請先在有網路時打開過一次 " + SAVER_URL); }
+};
 $("#gal-out").onclick = openOut;
-$("#out-close").onclick = closeOut;
+$("#out-close").onclick = () => { out.run++; out.files = []; $("#out").classList.remove("on"); };
 $("#out-clear").onclick = () => {
-  const n = out.items.length, left = out.items.filter(x => x.state !== "done").length;
-  const paths = filesFor(out.items.map(x => x.f.path)).concat(gal.orphans.map(f => f.path));   // 連同沒有原檔的 ._FILM 一起清
-  confirmDelete($("#out-clear"), (left ? "還有 " + left + " 張沒存，" : "") + "將從相機清除 " + n + " 張", paths, $("#out-msg"), r => { if (!r.left.length) closeOut(); });
+  const paths = filesFor(out.files.map(x => x.path)).concat(gal.orphans.map(f => f.path));   // 連同沒有原檔的 ._FILM 一起清
+  confirmDelete($("#out-clear"), (out.saved ? "" : "還沒確認存到照片，") + "將從相機清除 " + out.files.length + " 張", paths, $("#out-msg"),
+    r => { if (!r.left.length) $("#out-close").onclick(); });
 };
 $("#v-delete").onclick = () => {
   const f = view.f; if (!f) return;
@@ -1389,22 +1381,6 @@ function openSaver() {   // 一定要在點擊當下同步呼叫，不然 iOS �
     onSaved(fn) { saved = fn; }
   };
 }
-$("#dev-saver").onclick = async () => {
-  const msg = $("#dev-saver-msg"), sv = openSaver();
-  if (!sv.ok) { say(msg, "無法打開存檔頁（彈出視窗被擋）", "bad"); return; }
-  sv.onSaved(n => { say(msg, "存檔頁回報：已分享 " + n + " 張", "ok"); addTrace("存到照片：已分享 " + n + " 張"); });
-  try {
-    say(msg, "沖洗中…");
-    const f = (await listPhotos()).filter(p => p.path.includes(ORIG)).sort((a, b) => seqOf(b.name) - seqOf(a.name))[0];
-    if (!f) throw new Error("相機裡沒有照片");
-    const img = await decode(await getBlob(toUrl(f.path), { pri: "hi", timeout: 60000 }));
-    const r = await developPhoto(f, img); if (img.close) img.close();
-    say(msg, "等待存檔頁…");
-    await sv.send([{ name: r.name, blob: r.blob }]);
-    say(msg, "已交給存檔頁（" + (r.blob.size / 1048576).toFixed(1) + " MB），請到那一頁按「存到照片」", "ok");
-    addTrace("存到照片：已傳 " + r.name);
-  } catch (e) { say(msg, "失敗：" + e.message, "bad"); addTrace("存到照片失敗：" + e.message); }
-};
 
 /* ---------- 一般 HTTP 請求（讀寫記憶卡 /APP/ 的檔案），一樣排進相機的請求隊伍 ---------- */
 function httpReq(url, init) {
