@@ -257,18 +257,18 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
   <!-- ==================== 設定 ==================== -->
   <section class="page" id="page-settings">
     <h1>設定</h1>
+    <h3 class="gtitle">相機</h3>
+    <dl class="list" id="set-info"></dl>
     <h3 class="gtitle">拍攝</h3>
     <div class="list">
       <div class="li"><span>自動關機</span><div class="seg sm" id="set-apo" role="group" aria-label="自動關機"></div></div>
       <div class="li"><span>每卷張數</span><div class="seg sm" id="set-limit" role="group" aria-label="每卷張數"></div></div>
     </div>
-    <h3 class="gtitle">相機</h3>
-    <dl class="list" id="set-info"></dl>
-    <div class="list"><button class="li danger" id="set-reset" type="button">恢復相機原廠設定</button></div>
     <h3 class="gtitle">App</h3>
     <div class="list">
       <div class="li"><span>外觀</span><div class="seg sm" id="set-theme" role="group" aria-label="外觀"></div></div>
     </div>
+    <div class="list"><button class="li danger" id="set-reset" type="button">恢復相機原廠設定</button></div>
     <div class="card" id="set-dev" hidden>
       <h2>開發者</h2>
       <details><summary>通訊紀錄</summary><pre class="log" id="set-log" style="margin-top:8px"></pre></details>
@@ -367,7 +367,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <script>
 "use strict";
-const APP_VERSION = "2026.10.21g";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
+const APP_VERSION = "2026.10.21h";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
 const $ = (s, el = document) => el.querySelector(s);
 const store = {
   get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -538,34 +538,35 @@ const SLOTS = [{ no: "C1", w: 8012, r: 8013 }, { no: "C2", w: 8014, r: 8015 }, {
    底片庫：名稱（寫進相機、出現在檔名）＋ 手機端沖洗風格 ＋ 機內調色（預設中性）。
    內建底片的風格是依名稱做的近似，不是原生 App 的真實濾鏡。
    ===================================================================== */
-const BUILTIN_FILMS = [   // 以經典底片為參考的近似風格
-  { name: "STD",        label: "原色", look: {} },
-  { name: "PORTRA160",  label: "柯達 Portra 160 風格", look: { temp: 12, con: -15, sat: -12, fade: 10, grain: 10, sh: [0, 3, 5], hi: [8, 4, 0] } },
-  { name: "PORTRA400",  label: "柯達 Portra 400 風格", look: { temp: 18, tint: 4, con: -12, sat: -10, fade: 12, grain: 22, sh: [0, 4, 6], hi: [10, 5, -2] } },
-  { name: "EKTAR100",   label: "柯達 Ektar 100 風格", look: { temp: 5, con: 30, sat: 40, grain: 6 } },
-  { name: "GOLD200",    label: "柯達 Gold 200 風格", look: { temp: 40, tint: 8, con: 12, sat: 18, fade: 8, grain: 22, hi: [12, 6, -10] } },
-  { name: "ULTRAMAX",   label: "柯達 UltraMax 400 風格", look: { temp: 30, tint: 5, con: 22, sat: 25, fade: 5, grain: 32, sh: [2, 0, 4] } },
-  { name: "COLORPLUS",  label: "柯達 ColorPlus 200 風格", look: { temp: 35, tint: 10, con: 5, sat: 5, fade: 22, grain: 30, sh: [6, 2, 0] } },
-  { name: "E100",       label: "柯達 Ektachrome E100 風格", look: { temp: -20, con: 30, sat: 28, grain: 8, sh: [0, 2, 8] } },
-  { name: "SUPERIA400", label: "富士 Superia 400 風格", look: { temp: -5, tint: -10, con: 12, sat: 12, grain: 25, sh: [0, 6, 4], hi: [4, 2, -2] } },
-  { name: "C200",       label: "富士 C200 風格", look: { temp: -8, tint: -8, con: 5, sat: 5, fade: 8, grain: 22, sh: [0, 5, 6] } },
-  { name: "PRO400H",    label: "富士 Pro 400H 風格", look: { exp: 8, temp: -4, tint: -6, con: -15, sat: -12, fade: 15, grain: 14, sh: [0, 5, 8], hi: [2, 4, 2] } },
-  { name: "VELVIA50",   label: "富士 Velvia 50 風格", look: { temp: 2, con: 35, sat: 55, vib: 10, blk: 10, grain: 4 } },
-  { name: "PROVIA100F", label: "富士 Provia 100F 風格", look: { temp: -5, con: 18, sat: 15, grain: 5 } },
-  { name: "CS800T",     label: "CineStill 800T 風格", look: { temp: -40, tint: 6, con: 10, sat: 8, hl: -10, grain: 30, sh: [0, 4, 12], hi: [14, 4, -4] } },
-  { name: "TRIX400",    label: "柯達 Tri-X 400 風格", look: { mono: 1, con: 50, grain: 45, vig: 10 } },
-  { name: "TMAX100",    label: "柯達 T-Max 100 風格", look: { mono: 1, con: 15, grain: 10 } },
-  { name: "HP5PLUS",    label: "Ilford HP5 Plus 風格", look: { mono: 1, con: 25, shd: 10, grain: 38 } },
-  { name: "ACROS100",   label: "富士 Acros 100 風格", look: { mono: 1, con: 20, hl: -10, grain: 8 } }
+const BUILTIN_FILMS = [   // 經典底片與富士底片模擬的近似風格，共 16 款
+  { name: "STD",       label: "原色", look: {} },
+  { name: "PORTRA400", label: "柯達 Portra 400 風格", look: { temp: 18, tint: 4, con: -12, sat: -10, fade: 12, grain: 22, sh: [0, 4, 6], hi: [10, 5, -2] } },
+  { name: "EKTAR100",  label: "柯達 Ektar 100 風格", look: { temp: 5, con: 30, sat: 40, grain: 6 } },
+  { name: "GOLD200",   label: "柯達 Gold 200 風格", look: { temp: 40, tint: 8, con: 12, sat: 18, fade: 8, grain: 22, hi: [12, 6, -10] } },
+  { name: "COLORPLUS", label: "柯達 ColorPlus 200 風格", look: { temp: 35, tint: 10, con: 5, sat: 5, fade: 22, grain: 30, sh: [6, 2, 0] } },
+  { name: "E100",      label: "柯達 Ektachrome E100 風格", look: { temp: -20, con: 30, sat: 28, grain: 8, sh: [0, 2, 8] } },
+  { name: "CC",        label: "富士 Classic Chrome 風格", look: { temp: 2, con: 18, sat: -28, hl: -10, shd: -8, grain: 8, sh: [0, 2, 4] } },
+  { name: "NC",        label: "富士 Classic Neg. 風格", look: { temp: -2, tint: -4, con: 25, sat: -10, hl: -8, grain: 10, sh: [0, 6, 6], hi: [8, 4, -2] } },
+  { name: "NOSTALGIC", label: "富士 Nostalgic Neg. 風格", look: { temp: 22, tint: 4, con: 8, sat: 5, shd: 8, fade: 6, grain: 8, sh: [4, 2, 0], hi: [10, 6, 0] } },
+  { name: "ETERNA",    label: "富士 Eterna 風格", look: { temp: -4, con: -22, sat: -30, hl: -12, shd: 12, fade: 6, sh: [0, 3, 4] } },
+  { name: "VELVIA",    label: "富士 Velvia 風格", look: { temp: 2, con: 35, sat: 55, vib: 10, blk: 10, grain: 4 } },
+  { name: "PROVIA",    label: "富士 Provia 風格", look: { temp: -5, con: 18, sat: 15, grain: 5 } },
+  { name: "CS800T",    label: "CineStill 800T 風格", look: { temp: -40, tint: 6, con: 10, sat: 8, hl: -10, grain: 30, sh: [0, 4, 12], hi: [14, 4, -4] } },
+  { name: "TRIX400",   label: "柯達 Tri-X 400 風格", look: { mono: 1, con: 50, grain: 45, vig: 10 } },
+  { name: "HP5PLUS",   label: "Ilford HP5 Plus 風格", look: { mono: 1, con: 25, shd: 10, grain: 38 } },
+  { name: "ACROS",     label: "富士 Acros 風格", look: { mono: 1, con: 20, hl: -10, grain: 8 } }
 ].map(f => Object.assign({ builtin: true, cam: NEUTRAL7.slice() }, f));
-// 舊版內建、也是原廠 App 用的底片名稱：不列在底片庫，但相機格子和用它們拍的照片照樣認得
+// 舊版內建（前 6 個也是原廠 App 用的名稱）：不列在底片庫，但相機格子、照片和改選過的設定照樣認得
 const LEGACY_FILMS = [
   { name: "BWHC",  label: "黑白高反差", look: { mono: 1, con: 70, grain: 30, vig: 25 } },
   { name: "GL200", label: "暖金 200", look: { temp: 55, tint: 15, con: 15, sat: 20, fade: 10, grain: 20, hi: [14, 6, -10] } },
   { name: "PT400", label: "柔和人像 400", look: { temp: 20, con: -15, sat: -5, fade: 20, grain: 20, sh: [4, 0, 8], hi: [10, 4, -4] } },
   { name: "GLEXP", label: "過期暖金", look: { temp: 70, sat: -25, fade: 45, grain: 40, vig: 30, sh: [12, 0, 16] } },
   { name: "CT100", label: "冷調正片", look: { temp: -35, con: 35, sat: 30, grain: 10 } },
-  { name: "MONO",  label: "柔和黑白", look: { mono: 1, con: -15, fade: 25, grain: 35 } }
+  { name: "MONO",  label: "柔和黑白", look: { mono: 1, con: -15, fade: 25, grain: 35 } },
+  { name: "PORTRA160", label: "柯達 Portra 160 風格", look: { temp: 12, con: -15, sat: -12, fade: 10, grain: 10, sh: [0, 3, 5], hi: [8, 4, 0] } },
+  { name: "ULTRAMAX",  label: "柯達 UltraMax 400 風格", look: { temp: 30, tint: 5, con: 22, sat: 25, fade: 5, grain: 32, sh: [2, 0, 4] } },
+  { name: "TMAX100",   label: "柯達 T-Max 100 風格", look: { mono: 1, con: 15, grain: 10 } }
 ].map(f => Object.assign({ builtin: true, cam: NEUTRAL7.slice() }, f));
 /* 自訂底片：主要存在記憶卡 /APP/films.json，手機只當快取（"lib"），換手機也看得到。
    每次儲存或刪除都新增一個版本 { name, t, label, look, cam } 或 { name, t, del: 1 }，依 t 排序；
