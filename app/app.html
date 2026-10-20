@@ -213,7 +213,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); }
 .list .li, .list dt, .list dd { margin: 0; }
 .li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; padding: 6px 14px; font-size: 15px; width: 100%; border: 0; background: none; text-align: left; }
 .li + .li { border-top: 1px solid var(--line); }
-.li dd { font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.li dd { font-size: 14px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
 .li dd:empty::after { content: ""; display: inline-block; width: 64px; height: 1em; vertical-align: middle; border-radius: 4px; background: var(--sunk); }
 button.li.danger { color: var(--bad); font-weight: 600; justify-content: center; }
 .seg.sm { flex: none; padding: 3px; border-radius: 8px; }
@@ -367,7 +367,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <script>
 "use strict";
-const APP_VERSION = "2026.10.21f";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
+const APP_VERSION = "2026.10.21g";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
 const $ = (s, el = document) => el.querySelector(s);
 const store = {
   get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -538,24 +538,34 @@ const SLOTS = [{ no: "C1", w: 8012, r: 8013 }, { no: "C2", w: 8014, r: 8015 }, {
    底片庫：名稱（寫進相機、出現在檔名）＋ 手機端沖洗風格 ＋ 機內調色（預設中性）。
    內建底片的風格是依名稱做的近似，不是原生 App 的真實濾鏡。
    ===================================================================== */
-const BUILTIN_FILMS = [
-  { name: "STD",   label: "原色", look: {} },
+const BUILTIN_FILMS = [   // 以經典底片為參考的近似風格
+  { name: "STD",        label: "原色", look: {} },
+  { name: "PORTRA160",  label: "柯達 Portra 160 風格", look: { temp: 12, con: -15, sat: -12, fade: 10, grain: 10, sh: [0, 3, 5], hi: [8, 4, 0] } },
+  { name: "PORTRA400",  label: "柯達 Portra 400 風格", look: { temp: 18, tint: 4, con: -12, sat: -10, fade: 12, grain: 22, sh: [0, 4, 6], hi: [10, 5, -2] } },
+  { name: "EKTAR100",   label: "柯達 Ektar 100 風格", look: { temp: 5, con: 30, sat: 40, grain: 6 } },
+  { name: "GOLD200",    label: "柯達 Gold 200 風格", look: { temp: 40, tint: 8, con: 12, sat: 18, fade: 8, grain: 22, hi: [12, 6, -10] } },
+  { name: "ULTRAMAX",   label: "柯達 UltraMax 400 風格", look: { temp: 30, tint: 5, con: 22, sat: 25, fade: 5, grain: 32, sh: [2, 0, 4] } },
+  { name: "COLORPLUS",  label: "柯達 ColorPlus 200 風格", look: { temp: 35, tint: 10, con: 5, sat: 5, fade: 22, grain: 30, sh: [6, 2, 0] } },
+  { name: "E100",       label: "柯達 Ektachrome E100 風格", look: { temp: -20, con: 30, sat: 28, grain: 8, sh: [0, 2, 8] } },
+  { name: "SUPERIA400", label: "富士 Superia 400 風格", look: { temp: -5, tint: -10, con: 12, sat: 12, grain: 25, sh: [0, 6, 4], hi: [4, 2, -2] } },
+  { name: "C200",       label: "富士 C200 風格", look: { temp: -8, tint: -8, con: 5, sat: 5, fade: 8, grain: 22, sh: [0, 5, 6] } },
+  { name: "PRO400H",    label: "富士 Pro 400H 風格", look: { exp: 8, temp: -4, tint: -6, con: -15, sat: -12, fade: 15, grain: 14, sh: [0, 5, 8], hi: [2, 4, 2] } },
+  { name: "VELVIA50",   label: "富士 Velvia 50 風格", look: { temp: 2, con: 35, sat: 55, vib: 10, blk: 10, grain: 4 } },
+  { name: "PROVIA100F", label: "富士 Provia 100F 風格", look: { temp: -5, con: 18, sat: 15, grain: 5 } },
+  { name: "CS800T",     label: "CineStill 800T 風格", look: { temp: -40, tint: 6, con: 10, sat: 8, hl: -10, grain: 30, sh: [0, 4, 12], hi: [14, 4, -4] } },
+  { name: "TRIX400",    label: "柯達 Tri-X 400 風格", look: { mono: 1, con: 50, grain: 45, vig: 10 } },
+  { name: "TMAX100",    label: "柯達 T-Max 100 風格", look: { mono: 1, con: 15, grain: 10 } },
+  { name: "HP5PLUS",    label: "Ilford HP5 Plus 風格", look: { mono: 1, con: 25, shd: 10, grain: 38 } },
+  { name: "ACROS100",   label: "富士 Acros 100 風格", look: { mono: 1, con: 20, hl: -10, grain: 8 } }
+].map(f => Object.assign({ builtin: true, cam: NEUTRAL7.slice() }, f));
+// 舊版內建、也是原廠 App 用的底片名稱：不列在底片庫，但相機格子和用它們拍的照片照樣認得
+const LEGACY_FILMS = [
   { name: "BWHC",  label: "黑白高反差", look: { mono: 1, con: 70, grain: 30, vig: 25 } },
   { name: "GL200", label: "暖金 200", look: { temp: 55, tint: 15, con: 15, sat: 20, fade: 10, grain: 20, hi: [14, 6, -10] } },
   { name: "PT400", label: "柔和人像 400", look: { temp: 20, con: -15, sat: -5, fade: 20, grain: 20, sh: [4, 0, 8], hi: [10, 4, -4] } },
   { name: "GLEXP", label: "過期暖金", look: { temp: 70, sat: -25, fade: 45, grain: 40, vig: 30, sh: [12, 0, 16] } },
   { name: "CT100", label: "冷調正片", look: { temp: -35, con: 35, sat: 30, grain: 10 } },
-  { name: "MONO",  label: "柔和黑白", look: { mono: 1, con: -15, fade: 25, grain: 35 } },
-  // 以柯達底片為參考的近似風格
-  { name: "PORTRA400", label: "柯達 Portra 400 風格", look: { temp: 18, tint: 4, con: -12, sat: -10, fade: 12, grain: 22, sh: [0, 4, 6], hi: [10, 5, -2] } },
-  { name: "PORTRA160", label: "柯達 Portra 160 風格", look: { temp: 12, con: -15, sat: -12, fade: 10, grain: 10, sh: [0, 3, 5], hi: [8, 4, 0] } },
-  { name: "GOLD200",   label: "柯達 Gold 200 風格", look: { temp: 40, tint: 8, con: 12, sat: 18, fade: 8, grain: 22, hi: [12, 6, -10] } },
-  { name: "ULTRAMAX",  label: "柯達 UltraMax 400 風格", look: { temp: 30, tint: 5, con: 22, sat: 25, fade: 5, grain: 32, sh: [2, 0, 4] } },
-  { name: "EKTAR100",  label: "柯達 Ektar 100 風格", look: { temp: 5, con: 30, sat: 40, grain: 6 } },
-  { name: "COLORPLUS", label: "柯達 ColorPlus 200 風格", look: { temp: 35, tint: 10, con: 5, sat: 5, fade: 22, grain: 30, sh: [6, 2, 0] } },
-  { name: "E100",      label: "柯達 Ektachrome E100 風格", look: { temp: -20, con: 30, sat: 28, grain: 8, sh: [0, 2, 8] } },
-  { name: "TRIX400",   label: "柯達 Tri-X 400 風格", look: { mono: 1, con: 50, grain: 45, vig: 10 } },
-  { name: "TMAX100",   label: "柯達 T-Max 100 風格", look: { mono: 1, con: 15, grain: 10 } }
+  { name: "MONO",  label: "柔和黑白", look: { mono: 1, con: -15, fade: 25, grain: 35 } }
 ].map(f => Object.assign({ builtin: true, cam: NEUTRAL7.slice() }, f));
 /* 自訂底片：主要存在記憶卡 /APP/films.json，手機只當快取（"lib"），換手機也看得到。
    每次儲存或刪除都新增一個版本 { name, t, label, look, cam } 或 { name, t, del: 1 }，依 t 排序；
@@ -618,7 +628,7 @@ function refreshFilms() {
 refreshFilms();
 const allFilms = () => BUILTIN_FILMS.concat(customFilms);
 const byName = (list, name) => name ? list.find(f => f.name.toUpperCase() === String(name).toUpperCase()) || null : null;
-const findFilm = name => byName(allFilms(), name);
+const findFilm = name => byName(allFilms(), name) || byName(LEGACY_FILMS, name);
 function filmAt(name, time) {   // 拍攝當時的版本；照片比所有版本都早（例如相機時鐘被重設過）就用最早的版本
   const vs = libDoc.data.films.filter(v => v.name.toUpperCase() === String(name || "").toUpperCase());
   if (!vs.length) return null;
@@ -627,7 +637,7 @@ function filmAt(name, time) {   // 拍攝當時的版本；照片比所有版本
 }
 function filmsFor(f) {   // 這張照片可選的底片：拍攝用的那卷換成拍攝當時的版本，其他用最新版本
   const name = filmOfPhoto(f.name), old = filmAt(name, f.time), list = allFilms();
-  if (!old) return list;
+  if (!old) { const lg = byName(LEGACY_FILMS, name); if (lg) list.push(lg); return list; }
   const i = list.findIndex(x => x.name === old.name);
   if (i >= 0) list[i] = old; else list.push(old);
   return list;
@@ -874,7 +884,7 @@ function renderLibrary() {
   const mine = $("#lib-mine"), builtin = $("#lib-builtin"); mine.innerHTML = ""; builtin.innerHTML = "";
   allFilms().forEach(f => (f.builtin ? builtin : mine).appendChild(filmTile(f, () => openEditor(f), used(f))));
   const add = document.createElement("button"); add.type = "button"; add.className = "ftile";
-  add.innerHTML = '<span class="plus" aria-hidden="true">＋</span><b>新增</b>';
+  add.innerHTML = '<span class="plus" aria-hidden="true">＋</span>'; add.setAttribute("aria-label", "新增底片");
   add.onclick = () => openEditor(null, { name: "", label: "", look: {}, cam: NEUTRAL7.slice() });
   mine.appendChild(add);
 }
