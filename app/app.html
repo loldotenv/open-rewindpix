@@ -39,7 +39,7 @@ button, .btn, .tile, .ftile, .slotc, .preset { -webkit-user-select: none; user-s
 .btn:active:not(:disabled), .chip:active, .seg button:active, .modebar button:active, .st:active { transform: scale(.96); }
 .tile:active, .ftile:active, .slotc:active, .preset:active { transform: scale(.97); opacity: .85; }
 nav.tabs a:active { opacity: .6; }
-output, .st, dl.kv dd { font-variant-numeric: tabular-nums; }
+output, .st { font-variant-numeric: tabular-nums; }
 .sheet.on { animation: sheet-in .24s cubic-bezier(.2, .8, .2, 1); }
 @keyframes sheet-in { from { transform: translateY(18px); opacity: 0; } }
 .tile canvas { opacity: 0; transition: opacity .25s ease; }
@@ -211,10 +211,16 @@ nav.tabs a { display: flex; flex-direction: column; align-items: center; justify
 nav.tabs a svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 nav.tabs a[aria-current="page"] { color: var(--accent); }
 
-dl.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 14px; }
-dl.kv dt { color: var(--muted); }
-dl.kv dd { margin: 0; text-align: right; font-weight: 600; word-break: break-all; min-height: 1.4em; }
-dl.kv dd:empty::after { content: ""; display: inline-block; width: 64px; height: 1em; vertical-align: middle; border-radius: 4px; background: var(--sunk); }
+.gtitle { margin: 6px 4px -6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.list { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.list .li, .list dt, .list dd { margin: 0; }
+.li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; padding: 6px 14px; font-size: 15px; width: 100%; border: 0; background: none; text-align: left; }
+.li + .li { border-top: 1px solid var(--line); }
+.li dd { font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.li dd:empty::after { content: ""; display: inline-block; width: 64px; height: 1em; vertical-align: middle; border-radius: 4px; background: var(--sunk); }
+button.li.danger { color: var(--bad); font-weight: 600; justify-content: center; }
+.seg.sm { flex: none; padding: 3px; border-radius: 8px; }
+.seg.sm button { padding: 5px 9px; font-size: 13px; border-radius: 6px; }
 pre.log { font: 11px/1.45 var(--mono); background: var(--sunk); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; margin: 0; }
 details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .switch { display: flex; align-items: center; gap: 10px; font-size: 14px; }
@@ -255,24 +261,17 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
   <!-- ==================== 設定 ==================== -->
   <section class="page" id="page-settings">
     <h1>設定</h1>
-    <div class="card">
-      <div class="row"><h2 class="grow">相機資訊</h2><button class="btn small" id="set-refresh" type="button">重新讀取</button></div>
-      <dl class="kv" id="set-info"></dl>
+    <h3 class="gtitle">拍攝</h3>
+    <div class="list">
+      <div class="li"><span>自動關機</span><div class="seg sm" id="set-apo" role="group" aria-label="自動關機"></div></div>
+      <div class="li"><span>每卷張數</span><div class="seg sm" id="set-limit" role="group" aria-label="每卷張數"></div></div>
     </div>
-    <div class="card">
-      <h2>自動關機</h2>
-      <div class="seg" id="set-apo" role="group" aria-label="自動關機"></div>
-    </div>
-    <div class="card">
-      <h2>每卷張數</h2>
-      <div class="seg" id="set-limit" role="group" aria-label="每卷張數"></div>
-    </div>
-    <div class="card">
-      <h2>外觀</h2>
-      <div class="seg" id="set-theme" role="group" aria-label="外觀"></div>
-    </div>
-    <div class="card">
-      <button class="btn danger" id="set-reset" type="button">恢復相機原廠設定</button>
+    <h3 class="gtitle">相機</h3>
+    <dl class="list" id="set-info"></dl>
+    <div class="list"><button class="li danger" id="set-reset" type="button">恢復相機原廠設定</button></div>
+    <h3 class="gtitle">App</h3>
+    <div class="list">
+      <div class="li"><span>外觀</span><div class="seg sm" id="set-theme" role="group" aria-label="外觀"></div></div>
     </div>
     <div class="card" id="set-dev" hidden>
       <h2>開發者</h2>
@@ -379,7 +378,7 @@ details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 <script>
 "use strict";
-const APP_VERSION = "2026.10.21c";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
+const APP_VERSION = "2026.10.21d";   // 每次寫進記憶卡前更新；App 打開時會比對卡上的版本
 const $ = (s, el = document) => el.querySelector(s);
 const store = {
   get(k, d) { try { const v = localStorage.getItem("ps135app-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -1349,14 +1348,13 @@ function segment(box, items, cur, onPick) {
   box.innerHTML = "";
   items.forEach(it => { const b = button(it.label, "", () => onPick(it.v)); b.setAttribute("aria-pressed", String(it.v === cur)); box.appendChild(b); });
 }
-async function loadInfo() {
-  const rows = [["型號", 8018, valueOf], ["韌體版本", 3012, valueOf],
-    ["剩餘空間", 3017, x => fmtBytes(valueOf(x))], ["可拍張數", 1003, valueOf]];
-  const dl = $("#set-info"); dl.innerHTML = "";
-  const cells = rows.map(([label]) => {   // 先排好所有列，值的位置用固定大小的佔位，讀到再填入
-    const dt = document.createElement("dt"), dd = document.createElement("dd");
-    dt.textContent = label; dl.append(dt, dd); return dd;
-  });
+const INFO = [["型號", 8018, valueOf], ["韌體版本", 3012, valueOf], ["剩餘空間", 3017, x => fmtBytes(valueOf(x))], ["可拍張數", 1003, valueOf]];
+const infoCells = INFO.map(([label]) => {   // 先排好所有列，值的位置用固定大小的佔位，讀到再填入
+  const row = document.createElement("div"), dt = document.createElement("dt"), dd = document.createElement("dd");
+  row.className = "li"; dt.textContent = label; row.append(dt, dd); $("#set-info").appendChild(row); return dd;
+});
+async function loadInfo() {   // 每次進設定頁都重讀；值在原位更新，不會閃回佔位
+  const cells = infoCells, rows = INFO;
   try {   // 3014 會列出 3007（自動關機）與 8004（張數上限）的目前值；先讀，設定項目才不會最後才出現
     const m = statusMap(await cmd(3014, "", { timeout: 15000 })); renderApo(m["3007"]);
     if (m["8004"] != null) { store.set("limit", m["8004"]); renderLimit(); }
@@ -1386,7 +1384,6 @@ async function syncClock() {
   const t = new Date();
   await cmd(3006, "&str=" + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + ":" + pad2(t.getSeconds()));
 }
-$("#set-refresh").onclick = loadInfo;
 function renderTheme() {
   const cur = store.get("theme", "auto");
   if (cur === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = cur;
@@ -1440,7 +1437,7 @@ function route() {
   TABS.forEach(t => $("#page-" + t).classList.toggle("on", t === tab));
   document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
   if (tab === "gallery") loadGallery();   // 每次切到相簿都重新讀清單，縮圖沿用
-  if (tab === "settings" && !$("#set-info").children.length) loadInfo();
+  if (tab === "settings") loadInfo();
   if (tab === "film") { renderLibrary(); if (camReadAt && Date.now() - camReadAt > 5000) readCamera(); }   // 回到底片頁時重新讀相機
 }
 window.addEventListener("hashchange", route);
