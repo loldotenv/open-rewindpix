@@ -1371,7 +1371,7 @@ $("#set-reset").onclick = async () => {
    等它說「準備好了」再用 postMessage 把沖好的照片交過去，由它叫出分享選單。照片只在手機內傳遞。 */
 const SAVER_URL = "https://loldotenv.github.io/open-rewindpix/saver/", SAVER_ORIGIN = new URL(SAVER_URL).origin;
 function openSaver() {   // 一定要在點擊當下同步呼叫，不然 iOS 會擋掉彈出視窗
-  const w = window.open(SAVER_URL, "ps135-saver");
+  const w = window.open(SAVER_URL, "_blank");   // 每次開新分頁：用固定名稱會沿用背景裡的舊分頁，瀏覽器不會切過去
   let ready = false, wake = null, saved = null;
   const on = ev => {
     if (ev.origin !== SAVER_ORIGIN || !ev.data) return;

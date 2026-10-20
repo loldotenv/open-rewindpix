@@ -1,5 +1,5 @@
 // 讓「存到照片」頁面在連著相機 Wi-Fi（沒有網路）時也打得開：先用快取，有網路時順便更新快取
-const CACHE = "ps135-saver-v1";
+const CACHE = "ps135-saver-v2";
 const FILES = ["./", "./index.html"];
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener("activate", e => e.waitUntil(

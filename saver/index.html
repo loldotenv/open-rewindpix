@@ -70,7 +70,10 @@ $("#save").onclick = async () => {
   try {
     await navigator.share({ files });
     say("完成。回到 PS135 App，確認照片都在「照片」App 裡之後，就可以從相機清除。", "ok"); diag("share 完成");
-    if (window.opener) window.opener.postMessage({ type: "ps135-saved", n: files.length }, APP_ORIGIN);
+    if (window.opener) {
+      window.opener.postMessage({ type: "ps135-saved", n: files.length }, APP_ORIGIN);
+      setTimeout(() => window.close(), 1200);   // 由 App 打開的分頁可以自己關掉，畫面回到 App；關不掉就留著這行說明
+    }
   } catch (e) {
     diag("share 失敗：" + e.name + " " + e.message);
     if (e.name !== "AbortError") say("無法叫出分享選單：" + e.message, "bad");
