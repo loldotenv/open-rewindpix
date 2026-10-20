@@ -70,7 +70,6 @@ h2 { font-size: 16px; margin: 0; }
 .btn.small { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
 .btn:disabled { opacity: .45; }
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.btns .wide { grid-column: 1 / -1; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
 .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
@@ -175,9 +174,7 @@ body.selecting main { padding-bottom: calc(var(--tab-h) + 130px + env(safe-area-
 .sheet header b { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sheet .body { flex: 1; overflow: auto; padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; max-width: 620px; width: 100%; margin: 0 auto; }
 .sheet .body > * { flex-shrink: 0; }   /* 內容超過畫面時用捲動，不要把照片和選單壓扁 */
-.sheet canvas.big, .sheet img.big { width: 100%; height: auto; border-radius: 10px; background: var(--sunk); display: block; }
-.compare { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.compare small { position: absolute; left: 8px; top: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px; }
+.sheet img.big { width: 100%; height: auto; border-radius: 10px; background: var(--sunk); display: block; }
 
 /* ---------- 分頁列 ---------- */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr);
@@ -368,7 +365,7 @@ function armed(btn, label, ms) {   // 危險動作要按兩次：第一次只改
    相機連線：所有請求排成一條隊伍，一次只送一個（相機的網頁伺服器很慢，
    同時送多個請求會互相卡住）。指令優先，縮圖與原圖下載排在後面。
    ===================================================================== */
-const conn = { lastOk: 0, fails: 0, latency: null, lastErr: "", running: false };
+const conn = { lastOk: 0, fails: 0, lastErr: "", running: false };
 const queue = { hi: [], lo: [] };
 const trace = [];
 function addTrace(line) {
@@ -387,23 +384,22 @@ async function pump() {
   try { job.resolve(await job.fn()); } catch (e) { job.reject(e); }
   conn.running = false; renderStatus(); pump();
 }
-async function fetchT(url, ms) {
+async function fetchT(url, ms, init) {
   const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms);
-  try { return await fetch(url, { cache: "no-store", signal: ac.signal }); }
+  try { return await fetch(url, Object.assign({ cache: "no-store", signal: ac.signal }, init)); }
   catch (e) { throw new Error(e.name === "AbortError" ? "逾時" : "連不到相機"); }
   finally { clearTimeout(t); }
 }
-function markOk(ms) { conn.lastOk = Date.now(); conn.fails = 0; conn.latency = Math.round(ms); conn.lastErr = ""; renderStatus(); }
+function markOk() { conn.lastOk = Date.now(); conn.fails = 0; conn.lastErr = ""; renderStatus(); }
 function markFail(e) { conn.fails++; conn.lastErr = e.message; renderStatus(); }
 function cmd(n, extra, opt) {
   opt = opt || {};
   const url = "/?custom=1&cmd=" + n + (extra || "");
   return schedule(async () => {
-    const t0 = performance.now();
     try {
       const r = await fetchT(url, opt.timeout || 8000);
       const text = await r.text();
-      markOk(performance.now() - t0);
+      markOk();
       if (n !== 3016) addTrace(n + (extra || "") + " → " + (n === 3015 ? "檔案清單 " + (text.match(/<File>/g) || []).length + " 筆" : text.replace(/\s+/g, " ").slice(0, 200)));
       return text;
     } catch (e) { markFail(e); addTrace(n + (extra || "") + " → ✗ " + e.message); throw e; }
@@ -412,12 +408,11 @@ function cmd(n, extra, opt) {
 function getBlob(url, opt) {
   opt = opt || {};
   return schedule(async () => {
-    const t0 = performance.now();
     try {
       const r = await fetchT(url, opt.timeout || 30000);
       if (!r.ok) throw new Error("HTTP " + r.status);
       const b = await r.blob();
-      markOk(performance.now() - t0);
+      markOk();
       return b;
     } catch (e) { if (!/HTTP/.test(e.message)) markFail(e); throw e; }
   }, opt.pri || "lo");
@@ -508,6 +503,7 @@ const PARAMS = [
 const toCam = (p, u) => Math.round(u >= 0 ? p.neutral + (u / 100) * (p.hi - p.neutral) : p.neutral + (u / 100) * (p.neutral - p.lo));
 const toUser = (p, c) => Math.max(-100, Math.min(100, Math.round(c >= p.neutral ? (c - p.neutral) / (p.hi - p.neutral) * 100 : (c - p.neutral) / (p.neutral - p.lo) * 100)));
 const NEUTRAL7 = [0, 0, 0, 0, 0, 0, 0];
+const camStr = film => film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":");   // 寫進相機的 7 個值
 const SLOTS = [{ no: "C1", w: 8012, r: 8013 }, { no: "C2", w: 8014, r: 8015 }, { no: "C3", w: 8016, r: 8017 }];
 
 /* =====================================================================
@@ -536,7 +532,8 @@ const BUILTIN_FILMS = [
 /* 自訂底片：主要存在記憶卡 /APP/films.json，手機只當快取（"lib"），換手機也看得到。
    每次儲存或刪除都新增一個版本 { name, t, label, look, cam } 或 { name, t, del: 1 }，依 t 排序；
    t 與相機 3015 的 TIME 同格式（"YYYY/MM/DD HH:MM:SS"），沖洗時依拍攝時間挑當時的版本，改了底片舊照片不會變。 */
-const stamp = (d = new Date()) => d.getFullYear() + "/" + [d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, "0")).join("/") + " " + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, "0")).join(":");
+const pad2 = n => String(n).padStart(2, "0");
+const stamp = (d = new Date()) => d.getFullYear() + "/" + pad2(d.getMonth() + 1) + "/" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
 /* 存在記憶卡 /APP/ 的資料，手機留一份快取。修改後等 1.5 秒再上傳（拖拉桿時不會一直傳）。
    同步時先讀記憶卡上的檔案、與手機合併，內容不同才寫回去；同時只跑一次，跑完若又有修改就再跑。 */
 function cardDoc(file, key, empty, merge, onSynced) {
@@ -584,10 +581,6 @@ const libDoc = cardDoc("films.json", "lib", () => ({ v: 1, films: [] }), mergeLi
   refreshFilms(); renderLibrary(); renderSlots();
   if (!ok && store.get("libdirty", false)) say($("#film-msg"), "底片已存在手機，連上相機後會自動存到記憶卡", "warn");
 });
-if (!store.get("lib", null) && store.get("films", null)) {   // 舊版只存在手機的底片
-  libDoc.data = mergeLib({ films: store.get("films", []).map(f => Object.assign({ t: "0000/00/00 00:00:00" }, f)) }); libDoc.changed();
-}
-const syncLib = () => libDoc.sync();
 let customFilms = [];
 function refreshFilms() {
   const cur = new Map();
@@ -767,7 +760,7 @@ function slotState(i) {   // 這一格的狀態：{ film, note, warn, fix }
   if (!name) return { film: null, note: "" };
   if (!film) return { film: null, note: "不在底片庫", warn: true, fix: ["這卷底片不在底片庫中。", "加入底片庫", () => openEditor(null, { name: String(name).toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 10), label: "", look: {}, cam: p && !p.every(v => v === -255) ? PARAMS.map((q, j) => toUser(q, p[j])) : NEUTRAL7.slice() })] };
   if (p && p.every(v => v === -255)) return { film, note: "此格已停用", warn: true, fix: ["此格已停用。", "寫入這卷底片", () => loadFilm(i, film)] };
-  if (p && film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":") !== p.join(":")) return { film, note: "相機設定不同", warn: true, fix: ["相機上的設定與這卷底片不同。", "更新相機", () => loadFilm(i, film)] };
+  if (p && camStr(film) !== p.join(":")) return { film, note: "相機設定不同", warn: true, fix: ["相機上的設定與這卷底片不同。", "更新相機", () => loadFilm(i, film)] };
   return { film, note: film.label || "" };
 }
 function renderSlots() {
@@ -797,19 +790,14 @@ async function loadFilm(i, film) {   // 把底片裝進第 i 格：寫名稱（8
     await cmd(8002, "&str=" + names.join(":"));
     const after = await cmd(8003);
     if (field(after, "FILM_FILTER_C" + (i + 1)) !== film.name) throw new Error("底片名稱沒有寫入成功");
-    const str = film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":");
-    const w = await cmd(SLOTS[i].w, "&str=" + str);
-    if (!statusOk(w)) await cmd(SLOTS[i].w, "&par=" + str);
-    const rb = await cmd(SLOTS[i].r);
-    const v = PARAMS.map(p => parseInt(field(rb, p.key), 10));
-    if (v.join(":") !== str) throw new Error("相機設定沒有寫入成功");
+    await writeSlotParams(i, camStr(film));
     say(msg, SLOTS[i].no + " 已換成 " + film.name, "ok");
   } catch (e) { say(msg, SLOTS[i].no + " 更換失敗：" + e.message, "bad"); }
   await readCamera();
 }
 
 async function writeCamFor(film) {   // 相機上裝著這卷底片的格子，相機內調色不一樣就寫入
-  const str = film.cam.map((u, j) => toCam(PARAMS[j], u)).join(":");
+  const str = camStr(film);
   const slots = (camState.names || []).map((n, i) => n === film.name && (camState.params[i] || []).join(":") !== str ? i : -1).filter(i => i >= 0);
   if (!slots.length) return;
   const ok = [], bad = [];
@@ -820,9 +808,8 @@ async function writeCamFor(film) {   // 相機上裝著這卷底片的格子，�
 }
 
 /* ---------- 選底片 ---------- */
-let pickFor = null;
 function openPicker(i) {
-  pickFor = i; $("#pk-title").textContent = SLOTS[i].no + " 的底片";
+  $("#pk-title").textContent = SLOTS[i].no + " 的底片";
   const st = slotState(i), fix = $("#pk-fix"); fix.innerHTML = ""; fix.hidden = !st.fix;
   if (st.fix) {
     const p = document.createElement("p"); p.className = "hint grow"; p.textContent = st.fix[0];
@@ -837,7 +824,7 @@ function openPicker(i) {
 }
 $("#pk-close").onclick = () => $("#picker").classList.remove("on");
 
-/* ---------- 試拍 ---------- */
+/* ---------- 檔案清單 ---------- */
 async function listPhotos() {
   const x = await cmd(3015, "", { timeout: 15000 });
   const out = [], re = /<File>([\s\S]*?)<\/File>/g; let m;
@@ -943,8 +930,8 @@ $("#fe-save").onclick = () => {
   if (fe.onSaved) fe.onSaved(findFilm(fe.f.name));
 };
 $("#fe-dup").onclick = () => {
-  const base = fe.f, draft = JSON.parse(JSON.stringify({ name: "", label: (base.label || base.name) + " 複製", look: base.look, cam: base.cam }));
-  openEditor(null, draft); say($("#fe-msg"), "請輸入新名稱", "warn");
+  openEditor(null, { name: "", label: (fe.f.label || fe.f.name) + " 複製", look: fe.f.look, cam: fe.f.cam });   // openEditor 會複製一份
+  say($("#fe-msg"), "請輸入新名稱", "warn");
 };
 $("#fe-del").onclick = () => {
   if (!armed($("#fe-del"), "再按一次確認刪除")) return;
@@ -978,9 +965,6 @@ function mergeDev(a, b) {
   return { v: 1, photos: Object.fromEntries(Object.keys(out).sort().map(k => [k, out[k]])) };
 }
 const devDoc = cardDoc("photos.json", "choices", () => ({ v: 1, photos: {} }), mergeDev, () => { if (gal.loaded && !$("#viewer").classList.contains("on")) renderGrid(); });
-if (!store.get("choices", null) && store.get("dev", null)) {   // 舊版只存在手機
-  const old = store.get("dev", {}); for (const k in old) devDoc.data.photos[k] = Object.assign({ t: "0000/00/00 00:00:00" }, old[k]); devDoc.changed();
-}
 function setChoice(name, c) { devDoc.data.photos[name] = Object.assign({ t: stamp() }, c); devDoc.changed(); }
 const seqOf = name => { const m = /_(\d+)\.jpe?g$/i.exec(name); return m ? +m[1] : 0; };
 const stemOf = name => name.replace(/_\d+\.jpe?g$/i, "");
@@ -1071,7 +1055,7 @@ async function deleteMany(paths, msgEl) {
   for (const p of left) { if (deletable(p)) try { await getBlob(toUrl(p) + "?del=1", { pri: "hi", timeout: 15000 }); } catch (e) {} }
   if (left.length) left = (await listPhotos()).filter(f => paths.includes(f.path)).map(f => f.path);
   paths.forEach(p => { const n = p.split("\\").pop(); if (!left.includes(p) && devDoc.data.photos[n]) setChoice(n, {}); });   // 之後同名的新照片不會沿用
-  return { ok: paths.length - left.length, left };
+  return { left };
 }
 const filesFor = origPaths => [].concat(...origPaths.map(p => gal.pairOf.get(p) ? [p, gal.pairOf.get(p).path] : [p]));
 async function confirmDelete(btn, label, paths, msgEl, after) {
@@ -1362,7 +1346,6 @@ function renderLimit() {
     catch (e) { say($("#set-msg"), "設定失敗：" + e.message, "bad"); }
   });
 }
-const pad2 = n => (n < 10 ? "0" : "") + n;
 async function syncClock() {
   // 韌體用 sscanf("%d-%d-%d") / ("%d:%d:%d")，格式錯也回 Status 0，所以要看下一張照片的檔名確認
   const d = new Date();
@@ -1402,8 +1385,7 @@ function openSaver() {   // 一定要在點擊當下同步呼叫，不然 iOS �
       if (!ready) await new Promise((res, rej) => { wake = res; setTimeout(() => rej(new Error("存檔頁沒有回應")), ms || 20000); });
       w.postMessage({ type: "ps135-photos", files: items }, SAVER_ORIGIN);
     },
-    onSaved(fn) { saved = fn; },
-    close() { window.removeEventListener("message", on); }
+    onSaved(fn) { saved = fn; }
   };
 }
 $("#dev-saver").onclick = async () => {
@@ -1424,12 +1406,10 @@ $("#dev-saver").onclick = async () => {
 };
 
 /* ---------- 一般 HTTP 請求（讀寫記憶卡 /APP/ 的檔案），一樣排進相機的請求隊伍 ---------- */
-function httpReq(url, init, ms) {
+function httpReq(url, init) {
   return schedule(async () => {
-    const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms || 15000);
-    try { const r = await fetch(url, Object.assign({ cache: "no-store", signal: ac.signal }, init)); return { status: r.status, text: await r.text() }; }
-    catch (e) { throw new Error(e.name === "AbortError" ? "逾時" : "連不到相機"); }
-    finally { clearTimeout(t); }
+    try { const r = await fetchT(url, 15000, init), text = await r.text(); markOk(); return { status: r.status, text }; }
+    catch (e) { markFail(e); throw e; }
   }, "hi");
 }
 
@@ -1453,7 +1433,7 @@ route();
 cmd(3016, "", { timeout: 5000 }).catch(() => {});
 readCamera();
 syncClock().catch(() => {});   // 每次打開都把相機時間對齊手機
-syncLib(); devDoc.sync();
+libDoc.sync(); devDoc.sync();
 refreshRoll(); setInterval(() => { if (!document.hidden && !queue.hi.length && !conn.running) refreshRoll(); }, 60000);
 useSample(sampleId);
 </script>
